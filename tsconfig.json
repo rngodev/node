@@ -1,0 +1,28 @@
+{
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.spec.ts", "bin"],
+  "compilerOptions": {
+    "lib": ["es2022"],
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "node",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@main": ["./src/index.ts"],
+      "@util": ["./src/util.ts"],
+      "@cli/*": ["./src/cli/*"]
+    }
+  },
+  "ts-node": {
+    "esm": true
+  },
+  "tsc-alias": {
+    "resolveFullPaths": true
+  }
+}
