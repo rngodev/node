@@ -1,13 +1,11 @@
 {
-  "name": "rngo",
+  "name": "@rngo/test-publish",
   "version": "0.0.1",
-  "description": "rngo CLI",
+  "description": "rngo client and CLI",
   "bin": {
     "rngo": "./bin/run.js"
   },
-  "keywords": [
-    "cli"
-  ],
+  "keywords": ["api", "cli"],
   "author": "rngo",
   "license": "MIT",
   "type": "module",
@@ -17,12 +15,7 @@
     "compile": "rm -rf dist/ && tsc && tsc-alias",
     "codegen": "graphql-codegen"
   },
-  "files": [
-    "/bin",
-    "/dist",
-    "/npm-shrinkwrap.json",
-    "/oclif.manifest.json"
-  ],
+  "files": ["/bin", "/dist", "/npm-shrinkwrap.json"],
   "dependencies": {
     "@oclif/core": "^2.8.0",
     "@oclif/plugin-help": "^5.2.9",
@@ -75,19 +68,17 @@
     "bin": "rngo",
     "dirname": "rngo",
     "commands": "./dist/cli/commands",
-    "plugins": [
-      "@oclif/plugin-help"
-    ],
+    "plugins": ["@oclif/plugin-help"],
     "topicSeparator": " ",
     "topics": {
       "auth": {
         "description": "Authenticate with the rngo API."
       },
-      "conf": {
-        "description": "Configure this project's simulation."
+      "infer": {
+        "description": "Update the simulation config based upon system state."
       },
-      "org": {
-        "description": "Manage rngo organizations."
+      "init": {
+        "description": "Initialize this repository for use with rngo."
       },
       "sim": {
         "description": "Run the simulation and import the data."
