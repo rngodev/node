@@ -1,6 +1,6 @@
 {
   "name": "@rngo/test-publish",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "rngo client and CLI",
   "bin": {
     "rngo": "./bin/run.js"
@@ -16,6 +16,7 @@
     "codegen": "graphql-codegen"
   },
   "files": ["/bin", "/dist", "/npm-shrinkwrap.json"],
+  "main": "./dist/index.js",
   "dependencies": {
     "@oclif/core": "^2.8.0",
     "@oclif/plugin-help": "^5.2.9",
