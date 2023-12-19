@@ -17,6 +17,7 @@
   },
   "files": ["/bin", "/dist", "/npm-shrinkwrap.json"],
   "main": "./dist/index.js",
+  "types": "dist/index.d.ts",
   "dependencies": {
     "@oclif/core": "^2.8.0",
     "@oclif/plugin-help": "^5.2.9",
