@@ -126,13 +126,13 @@ export async function pgHelper(
             SELECT EXISTS (
               SELECT 1
               FROM column_defaults cd
-              WHERE cd.table_name = '${table.table_name}'::regclass
+              WHERE cd.table_name = '"${table.table_name}"'::regclass
               AND cd.attname = c.column_name
               AND cd.default_value LIKE 'nextval%')
           ) AS is_bigserial
         FROM information_schema.columns c
         LEFT JOIN fk_info
-        ON fk_info.from_table = '${table.table_name}'::regclass
+        ON fk_info.from_table = '"${table.table_name}"'::regclass
         AND fk_info.from_column = c.column_name
         WHERE table_name = '${table.table_name}'
         GROUP BY c.column_name, c.data_type, c.udt_name, c.is_nullable, fk_info.referenced_table, fk_info.referenced_column, c.ordinal_position
