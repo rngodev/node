@@ -3,6 +3,7 @@ dist/
 release/
 .rngo/
 .yarn/*
+!.yarn/cache
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
