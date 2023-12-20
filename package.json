@@ -5,7 +5,10 @@
   "bin": {
     "rngo": "./bin/run.js"
   },
-  "keywords": ["api", "cli"],
+  "keywords": [
+    "api",
+    "cli"
+  ],
   "author": "rngo",
   "license": "MIT",
   "type": "module",
@@ -15,7 +18,11 @@
     "compile": "rm -rf dist/ && tsc && tsc-alias",
     "codegen": "graphql-codegen"
   },
-  "files": ["/bin", "/dist", "/npm-shrinkwrap.json"],
+  "files": [
+    "/bin",
+    "/dist",
+    "/npm-shrinkwrap.json"
+  ],
   "main": "./dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
@@ -60,6 +67,7 @@
     "eslint": "^8.37.0",
     "eslint-config-prettier": "^8.8.0",
     "jest": "^29.5.0",
+    "np": "^9.2.0",
     "oclif": "^3.7.3",
     "pierre": "^2.0.0-alpha.9",
     "prettier": "2.8.7",
@@ -71,7 +79,9 @@
     "bin": "rngo",
     "dirname": "rngo",
     "commands": "./dist/cli/commands",
-    "plugins": ["@oclif/plugin-help"],
+    "plugins": [
+      "@oclif/plugin-help"
+    ],
     "topicSeparator": " ",
     "topics": {
       "auth": {
