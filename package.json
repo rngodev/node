@@ -2,9 +2,7 @@
   "name": "rngo",
   "version": "0.1.0",
   "description": "rngo client and CLI",
-  "bin": {
-    "rngo": "./bin/run.js"
-  },
+  "bin": "./bin/run.js",
   "keywords": [
     "api",
     "cli"
@@ -97,5 +95,6 @@
         "description": "Run the simulation and import the data."
       }
     }
-  }
+  },
+  "packageManager": "yarn@4.0.2"
 }
