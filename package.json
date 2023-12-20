@@ -1,6 +1,6 @@
 {
   "name": "@rngo/test-publish",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "rngo client and CLI",
   "bin": {
     "rngo": "./bin/run.js"
@@ -25,6 +25,7 @@
     "chrono-node": "^2.6.3",
     "clipboardy": "^3.0.0",
     "decompress": "^4.2.1",
+    "dotenv": "^16.3.1",
     "graphql": "^16.6.0",
     "graphql-request": "^5.2.0",
     "inquirer": "^9.1.5",
