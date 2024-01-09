@@ -26,6 +26,11 @@ export type Scalars = {
   Time: any;
 };
 
+export type Archive = {
+  __typename?: 'Archive';
+  url: Scalars['String'];
+};
+
 export type Branch = {
   __typename?: 'Branch';
   createdAt: Scalars['DateTime'];
@@ -93,6 +98,14 @@ export type CreateSimulation = {
 export type Error = {
   message: Scalars['String'];
   path?: Maybe<Array<Scalars['String']>>;
+};
+
+export type FileSink = Sink & {
+  __typename?: 'FileSink';
+  archives: Array<Archive>;
+  completedAt?: Maybe<Scalars['DateTime']>;
+  id: Scalars['ID'];
+  importScriptUrl?: Maybe<Scalars['String']>;
 };
 
 export type InvalidError = Error & {
@@ -280,36 +293,19 @@ export type ScenarioVersion = {
 export type Simulation = {
   __typename?: 'Simulation';
   branch: Branch;
-  completedAt?: Maybe<Scalars['DateTime']>;
   createdAt: Scalars['DateTime'];
   createdBy: User;
   end?: Maybe<Scalars['DateTime']>;
   id: Scalars['ID'];
   scenarioVersion?: Maybe<ScenarioVersion>;
   seed?: Maybe<Scalars['Int']>;
+  sinks: Array<Sink>;
   start?: Maybe<Scalars['DateTime']>;
-  streams: Array<SimulationStream>;
 };
 
-export type SimulationStream = {
-  __typename?: 'SimulationStream';
-  metadataUrl: Scalars['String'];
-  outputs: Array<SimulationStreamOutput>;
-  streamVersion: StreamVersion;
-  systems: Array<SimulationStreamSystem>;
-};
-
-export type SimulationStreamOutput = {
-  __typename?: 'SimulationStreamOutput';
-  dataUrl: Scalars['String'];
-  format: OutputFormat;
-  mode: OutputMode;
-};
-
-export type SimulationStreamSystem = {
-  __typename?: 'SimulationStreamSystem';
-  scriptUrls: Array<Scalars['String']>;
-  systemVersion: SystemVersion;
+export type Sink = {
+  completedAt?: Maybe<Scalars['DateTime']>;
+  id: Scalars['ID'];
 };
 
 export type Stream = {
@@ -465,7 +461,7 @@ export type GetSimulationQueryVariables = Exact<{
 }>;
 
 
-export type GetSimulationQuery = { __typename?: 'Query', simulation?: { __typename?: 'Simulation', id: string, completedAt?: any | null, streams: Array<{ __typename?: 'SimulationStream', metadataUrl: string, streamVersion: { __typename?: 'StreamVersion', stream: { __typename?: 'Stream', name: string } }, outputs: Array<{ __typename?: 'SimulationStreamOutput', dataUrl: string }>, systems: Array<{ __typename?: 'SimulationStreamSystem', scriptUrls: Array<string>, systemVersion: { __typename?: 'SystemVersion', system: { __typename?: 'System', name: string } } }> }> } | null };
+export type GetSimulationQuery = { __typename?: 'Query', simulation?: { __typename?: 'Simulation', id: string, sinks: Array<{ __typename?: 'FileSink', importScriptUrl?: string | null, id: string, completedAt?: any | null, archives: Array<{ __typename?: 'Archive', url: string }> }> } | null };
 
 
 export const AuthCliDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AuthCli"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"authCli"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cliCode"}},{"kind":"Field","name":{"kind":"Name","value":"userCode"}},{"kind":"Field","name":{"kind":"Name","value":"verificationUrl"}}]}}]}}]} as unknown as DocumentNode<AuthCliMutation, AuthCliMutationVariables>;
@@ -473,4 +469,4 @@ export const GetVerifiedCliAuthDocument = {"kind":"Document","definitions":[{"ki
 export const GetOrganizationsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getOrganizations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"organizations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<GetOrganizationsQuery, GetOrganizationsQueryVariables>;
 export const UpsertConfigFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"upsertConfigFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpsertConfigFile"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upsertConfigFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"branch"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<UpsertConfigFileMutation, UpsertConfigFileMutationVariables>;
 export const CreateSimulationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createSimulation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateSimulation"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createSimulation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateSimulationMutation, CreateSimulationMutationVariables>;
-export const GetSimulationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getSimulation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"simulation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"streams"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadataUrl"}},{"kind":"Field","name":{"kind":"Name","value":"streamVersion"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"stream"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"outputs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dataUrl"}}]}},{"kind":"Field","name":{"kind":"Name","value":"systems"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"systemVersion"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"system"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"scriptUrls"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}}]}}]}}]} as unknown as DocumentNode<GetSimulationQuery, GetSimulationQueryVariables>;
+export const GetSimulationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getSimulation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"simulation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"sinks"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FileSink"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"importScriptUrl"}},{"kind":"Field","name":{"kind":"Name","value":"archives"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetSimulationQuery, GetSimulationQueryVariables>;

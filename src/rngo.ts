@@ -143,12 +143,14 @@ export class Rngo {
   config: Config
   configPath: string
   directory: string
+  apiUrl: URL
   client: ApiClient
 
   constructor(options: ParsedRngoOptions) {
     this.config = options.config
     this.configPath = options.configPath
     this.directory = options.directory
+    this.apiUrl = options.apiUrl
     this.client = new ApiClient(options.apiUrl, options.apiToken)
   }
 
@@ -180,77 +182,71 @@ export class Rngo {
     return this.client.syncConfig(this.config, gqlScm)
   }
 
-  async awaitSimulation(simulationId: string): Promise<Simulation | undefined> {
+  async awaitSimulationFileSink(
+    simulationId: string
+  ): Promise<Simulation | undefined> {
     return rngoUtil.poll(async () => {
       const simulation = await this.client.getSimulation(simulationId)
 
-      if (simulation?.completedAt) {
-        return simulation
+      if (simulation) {
+        if (simulation.sinks[0]?.completedAt) {
+          return simulation
+        }
       }
     })
   }
 
-  async downloadSimulation(simulation: Simulation): Promise<string> {
+  async downloadSimulation(
+    simulation: Simulation
+  ): Promise<string | undefined> {
     const exists = await rngoUtil.fileExists(this.simulationsDir)
 
     if (!exists) {
       await fs.mkdir(this.simulationsDir, { recursive: true })
     }
 
-    const simulationDir = path.join(this.simulationsDir, simulation.id)
+    const fileSink = simulation.sinks[0]
+    // const fileSink = simulation.sinks.find(
+    //   (sink) => sink.__typename === 'FileSink'
+    // )
 
-    await Promise.all(
-      simulation.streams.map(async (simulationStream) => {
-        const streamName = simulationStream.streamVersion.stream.name
-        const outputDir = path.join(simulationDir, streamName)
+    if (fileSink) {
+      const simulationDir = path.join(this.simulationsDir, simulation.id)
+      const dataDir = path.join(simulationDir, 'data')
 
-        await rngoUtil.downloadUrl(simulationStream.metadataUrl, outputDir)
+      await Promise.all(
+        fileSink.archives.map(async (archive) => {
+          await rngoUtil.downloadUrl(archive.url, dataDir)
+        })
+      )
 
-        await Promise.all(
-          simulationStream.outputs.map(async (output) => {
-            await rngoUtil.downloadUrl(output.dataUrl, outputDir)
-          })
+      if (fileSink.importScriptUrl) {
+        const scriptPath = await rngoUtil.downloadUrl(
+          fileSink.importScriptUrl,
+          simulationDir
         )
+        await fs.chmod(scriptPath, 0o755)
+      }
 
-        await Promise.all(
-          simulationStream.systems.flatMap((system) => {
-            return system.scriptUrls.map(async (scriptUrl) => {
-              const filepath = await rngoUtil.downloadUrl(scriptUrl, outputDir)
-              await fs.chmod(filepath, 0o755)
-              return filepath
-            })
-          })
-        )
-      })
-    )
+      if (await rngoUtil.symlinkExists(this.lastSimulationDir)) {
+        await fs.unlink(this.lastSimulationDir)
+      }
 
-    if (await rngoUtil.symlinkExists(this.lastSimulationDir)) {
-      await fs.unlink(this.lastSimulationDir)
+      await fs.symlink(
+        path.relative(path.dirname(this.lastSimulationDir), simulationDir),
+        this.lastSimulationDir,
+        'dir'
+      )
+
+      return simulationDir
     }
-
-    await fs.symlink(
-      path.relative(path.dirname(this.lastSimulationDir), simulationDir),
-      this.lastSimulationDir,
-      'dir'
-    )
-
-    return simulationDir
   }
 
   async importSimulation(simulation: Simulation) {
     const directory = this.simulationDir(simulation.id)
 
-    await Promise.all(
-      simulation.streams.flatMap((simulationStream) => {
-        return simulationStream.systems.flatMap((simulationStreamSystem) => {
-          const streamName = simulationStream.streamVersion.stream.name
-          const systemName = simulationStreamSystem.systemVersion.system.name
-
-          return nodeUtil.promisify(execFile)('./import.sh', {
-            cwd: path.join(directory, streamName, systemName),
-          })
-        })
-      })
-    )
+    return nodeUtil.promisify(execFile)('./import.sh', {
+      cwd: directory,
+    })
   }
 }

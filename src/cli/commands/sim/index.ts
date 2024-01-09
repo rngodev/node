@@ -58,7 +58,7 @@ export default class Run extends Command {
     // const spec = flags.branch ? specs[flags.branch] : specs['default']
 
     const simulationId = await rngo.client.runSimulation(branchId!, parsedSeed)
-    const simulation = await rngo.awaitSimulation(simulationId)
+    const simulation = await rngo.awaitSimulationFileSink(simulationId)
 
     if (!simulation) {
       runSpinner.fail()
@@ -72,10 +72,9 @@ export default class Run extends Command {
     dowloadSpinner.succeed()
 
     const importSpinner = ora('Importing data').start()
-    const shouldImport = simulation.streams.some((simulationStream) => {
-      return simulationStream.systems.some((simulationStreamSystem) => {
-        return simulationStreamSystem.scriptUrls.length > 0
-      })
+
+    const shouldImport = simulation.sinks.some((sink) => {
+      return sink.__typename === 'FileSink' && sink.importScriptUrl
     })
 
     if (shouldImport) {

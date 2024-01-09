@@ -65,7 +65,7 @@ export class ApiClient {
   gql: GraphQLClient
 
   constructor(apiUrl: URL, validToken: ValidToken) {
-    this.gql = new GraphQLClient(apiUrl.toString(), {
+    this.gql = new GraphQLClient(`${apiUrl}/graphql`, {
       jsonSerializer: JSONbig({ useNativeBigInt: true }),
       headers: {
         authorization: `Bearer ${validToken.token}`,
@@ -159,26 +159,16 @@ export class ApiClient {
         query getSimulation($id: String!) {
           simulation(id: $id) {
             id
-            streams {
-              metadataUrl
-              streamVersion {
-                stream {
-                  name
+            sinks {
+              id
+              completedAt
+              ... on FileSink {
+                importScriptUrl
+                archives {
+                  url
                 }
-              }
-              outputs {
-                dataUrl
-              }
-              systems {
-                systemVersion {
-                  system {
-                    name
-                  }
-                }
-                scriptUrls
               }
             }
-            completedAt
           }
         }
       `),

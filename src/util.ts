@@ -29,8 +29,7 @@ export type InitError =
 export function resolveApiUrl(
   apiUrl: string | undefined
 ): Result<URL, InitError> {
-  const rawUrl =
-    apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev/graphql'
+  const rawUrl = apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev'
 
   try {
     return Ok(new URL(rawUrl))
@@ -92,7 +91,7 @@ export function filePathForUrl(url: string, directory: string) {
 export async function poll<T>(thunk: () => Promise<T>): Promise<T | undefined> {
   let value
 
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     value = await thunk()
 
     if (value) {
