@@ -216,7 +216,8 @@ export class Rngo {
 
       await Promise.all(
         fileSink.archives.map(async (archive) => {
-          await rngoUtil.downloadUrl(archive.url, dataDir)
+          const zipPath = await rngoUtil.downloadUrl(archive.url, dataDir)
+          rngoUtil.unzip(zipPath, dataDir)
         })
       )
 
