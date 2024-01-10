@@ -17,7 +17,11 @@ const { Err, Ok } = TsResult
 export type ConfigFile = { id: string; branchId: string }
 export type Organization = GetOrganizationsQuery['organizations'][number]
 export { UpsertConfigFileScm }
+export type NewSimulation = { id: string; defaultFileSinkId: string }
 export type Simulation = NonNullable<GetSimulationQuery['simulation']>
+export type Sink = NonNullable<
+  NonNullable<GetSimulationQuery['simulation']>['sinks'][number]
+>
 
 const ApiErrorSchema = z.object({
   path: z.union([z.string(), z.number()]).array().optional(),
@@ -128,12 +132,15 @@ export class ApiClient {
   async runSimulation(
     branchId: string,
     seed: number | undefined
-  ): Promise<string> {
+  ): Promise<NewSimulation> {
     const { createSimulation } = await this.gql.request(
       gql(/* GraphQL */ `
         mutation createSimulation($input: CreateSimulation!) {
           createSimulation(input: $input) {
             id
+            sinks {
+              id
+            }
           }
         }
       `),
@@ -150,7 +157,10 @@ export class ApiClient {
       }
     )
 
-    return createSimulation.id
+    return {
+      id: createSimulation.id,
+      defaultFileSinkId: createSimulation.sinks[0].id,
+    }
   }
 
   async getSimulation(simulationId: string): Promise<Simulation | undefined> {

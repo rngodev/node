@@ -12,6 +12,7 @@ import {
   ApiError,
   ConfigFile,
   Simulation,
+  Sink,
   UpsertConfigFileScm,
   ValidToken,
   parseToken,
@@ -182,22 +183,26 @@ export class Rngo {
     return this.client.syncConfig(this.config, gqlScm)
   }
 
-  async awaitSimulationFileSink(
-    simulationId: string
-  ): Promise<Simulation | undefined> {
+  async awaitSimulationSink(
+    simulationId: string,
+    sinkId: string
+  ): Promise<Sink | undefined> {
     return rngoUtil.poll(async () => {
       const simulation = await this.client.getSimulation(simulationId)
 
       if (simulation) {
-        if (simulation.sinks[0]?.completedAt) {
-          return simulation
+        const sink = simulation.sinks.find((sink) => sink.id === sinkId)
+
+        if (sink?.completedAt) {
+          return sink
         }
       }
     })
   }
 
-  async downloadSimulation(
-    simulation: Simulation
+  async downloadFileSink(
+    simulationId: string,
+    fileSink: Sink
   ): Promise<string | undefined> {
     const exists = await rngoUtil.fileExists(this.simulationsDir)
 
@@ -205,46 +210,39 @@ export class Rngo {
       await fs.mkdir(this.simulationsDir, { recursive: true })
     }
 
-    const fileSink = simulation.sinks[0]
-    // const fileSink = simulation.sinks.find(
-    //   (sink) => sink.__typename === 'FileSink'
-    // )
+    const simulationDir = path.join(this.simulationsDir, simulationId)
 
-    if (fileSink) {
-      const simulationDir = path.join(this.simulationsDir, simulation.id)
-      const dataDir = path.join(simulationDir, 'data')
+    await Promise.all(
+      fileSink.archives.map(async (archive) => {
+        const zipPath = await rngoUtil.downloadUrl(archive.url, simulationDir)
+        await rngoUtil.unzip(zipPath, simulationDir)
+        await fs.unlink(zipPath)
+      })
+    )
 
-      await Promise.all(
-        fileSink.archives.map(async (archive) => {
-          const zipPath = await rngoUtil.downloadUrl(archive.url, dataDir)
-          rngoUtil.unzip(zipPath, dataDir)
-        })
+    if (fileSink.importScriptUrl) {
+      const scriptPath = await rngoUtil.downloadUrl(
+        fileSink.importScriptUrl,
+        simulationDir
       )
-
-      if (fileSink.importScriptUrl) {
-        const scriptPath = await rngoUtil.downloadUrl(
-          fileSink.importScriptUrl,
-          simulationDir
-        )
-        await fs.chmod(scriptPath, 0o755)
-      }
-
-      if (await rngoUtil.symlinkExists(this.lastSimulationDir)) {
-        await fs.unlink(this.lastSimulationDir)
-      }
-
-      await fs.symlink(
-        path.relative(path.dirname(this.lastSimulationDir), simulationDir),
-        this.lastSimulationDir,
-        'dir'
-      )
-
-      return simulationDir
+      await fs.chmod(scriptPath, 0o755)
     }
+
+    if (await rngoUtil.symlinkExists(this.lastSimulationDir)) {
+      await fs.unlink(this.lastSimulationDir)
+    }
+
+    await fs.symlink(
+      path.relative(path.dirname(this.lastSimulationDir), simulationDir),
+      this.lastSimulationDir,
+      'dir'
+    )
+
+    return simulationDir
   }
 
-  async importSimulation(simulation: Simulation) {
-    const directory = this.simulationDir(simulation.id)
+  async importSimulation(simulationId: string) {
+    const directory = this.simulationDir(simulationId)
 
     return nodeUtil.promisify(execFile)('./import.sh', {
       cwd: directory,

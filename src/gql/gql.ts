@@ -17,7 +17,7 @@ const documents = {
     "\n        query GetVerifiedCliAuth($cliCode: String!) {\n          verifiedCliAuth(cliCode: $cliCode) {\n            token\n          }\n        }\n      ": types.GetVerifiedCliAuthDocument,
     "\n        query getOrganizations {\n          organizations {\n            id\n            name\n            createdAt\n          }\n        }\n      ": types.GetOrganizationsDocument,
     "\n          mutation upsertConfigFile($input: UpsertConfigFile!) {\n            upsertConfigFile(input: $input) {\n              id\n              branch {\n                id\n              }\n            }\n          }\n        ": types.UpsertConfigFileDocument,
-    "\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            id\n          }\n        }\n      ": types.CreateSimulationDocument,
+    "\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            id\n            sinks {\n              id\n            }\n          }\n        }\n      ": types.CreateSimulationDocument,
     "\n        query getSimulation($id: String!) {\n          simulation(id: $id) {\n            id\n            sinks {\n              id\n              completedAt\n              ... on FileSink {\n                importScriptUrl\n                archives {\n                  url\n                }\n              }\n            }\n          }\n        }\n      ": types.GetSimulationDocument,
 };
 
@@ -54,7 +54,7 @@ export function gql(source: "\n          mutation upsertConfigFile($input: Upser
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function gql(source: "\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            id\n          }\n        }\n      "): (typeof documents)["\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            id\n          }\n        }\n      "];
+export function gql(source: "\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            id\n            sinks {\n              id\n            }\n          }\n        }\n      "): (typeof documents)["\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            id\n            sinks {\n              id\n            }\n          }\n        }\n      "];
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

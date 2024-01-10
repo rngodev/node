@@ -54,13 +54,13 @@ export default class Run extends Command {
 
     const runSpinner = ora('Running simulation').start()
 
-    // const specs = config.specs || {}
-    // const spec = flags.branch ? specs[flags.branch] : specs['default']
+    const newSimulation = await rngo.client.runSimulation(branchId!, parsedSeed)
+    const sink = await rngo.awaitSimulationSink(
+      newSimulation.id,
+      newSimulation.defaultFileSinkId
+    )
 
-    const simulationId = await rngo.client.runSimulation(branchId!, parsedSeed)
-    const simulation = await rngo.awaitSimulationFileSink(simulationId)
-
-    if (!simulation) {
+    if (!sink) {
       runSpinner.fail()
       errorAndExit(this, 'SimTimedOut', 'Simulation timed out')
     } else {
@@ -68,17 +68,13 @@ export default class Run extends Command {
     }
 
     const dowloadSpinner = ora('Downloading data').start()
-    await rngo.downloadSimulation(simulation)
+    await rngo.downloadFileSink(newSimulation.id, sink)
     dowloadSpinner.succeed()
 
     const importSpinner = ora('Importing data').start()
 
-    const shouldImport = simulation.sinks.some((sink) => {
-      return sink.__typename === 'FileSink' && sink.importScriptUrl
-    })
-
-    if (shouldImport) {
-      await rngo.importSimulation(simulation)
+    if (sink.importScriptUrl) {
+      await rngo.importSimulation(newSimulation.id)
       importSpinner.succeed()
     } else {
       importSpinner.info('No import scripts found')
