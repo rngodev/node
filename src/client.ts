@@ -15,6 +15,7 @@ import { Config } from './rngo'
 const { Err, Ok } = TsResult
 
 export type ConfigFile = { id: string; branchId: string }
+export type ConfigFileError = { path: string[]; message: string }
 export type Organization = GetOrganizationsQuery['organizations'][number]
 export { UpsertConfigFileScm }
 export type NewSimulation = { id: string; defaultFileSinkId: string }
@@ -22,19 +23,6 @@ export type Simulation = NonNullable<GetSimulationQuery['simulation']>
 export type Sink = NonNullable<
   NonNullable<GetSimulationQuery['simulation']>['sinks'][number]
 >
-
-const ApiErrorSchema = z.object({
-  path: z.union([z.string(), z.number()]).array().optional(),
-  message: z.string(),
-})
-
-const ApiErrorResponseSchema = z.object({
-  response: z.object({
-    errors: ApiErrorSchema.array(),
-  }),
-})
-
-export type ApiError = z.infer<typeof ApiErrorSchema>
 
 export type ValidToken = {
   token: string
@@ -97,49 +85,64 @@ export class ApiClient {
   async syncConfig(
     config: Config,
     scm: UpsertConfigFileScm | undefined
-  ): Promise<Result<ConfigFile, ApiError[]>> {
-    try {
-      const { upsertConfigFile } = await this.gql.request(
-        gql(/* GraphQL */ `
-          mutation upsertConfigFile($input: UpsertConfigFile!) {
-            upsertConfigFile(input: $input) {
+  ): Promise<Result<ConfigFile, ConfigFileError[]>> {
+    const { upsertConfigFile } = await this.gql.request(
+      gql(/* GraphQL */ `
+        mutation upsertConfigFile($input: UpsertConfigFile!) {
+          upsertConfigFile(input: $input) {
+            ... on ConfigFile {
               id
               branch {
                 id
               }
             }
+            ... on UpsertConfigFileFailure {
+              config {
+                path
+                message
+              }
+            }
           }
-        `),
-        {
-          input: {
-            config,
-            scm,
-          },
         }
-      )
+      `),
+      {
+        input: {
+          config,
+          scm,
+        },
+      }
+    )
 
+    if (upsertConfigFile.__typename == 'ConfigFile') {
       return Ok({
         id: upsertConfigFile.id,
         branchId: upsertConfigFile.branch.id,
       })
-    } catch (raw) {
-      const gqlResult = ApiErrorResponseSchema.parse(raw)
-
-      return Err(gqlResult.response.errors)
+    } else if (upsertConfigFile.__typename == 'UpsertConfigFileFailure') {
+      return Err(upsertConfigFile.config || [])
+    } else {
+      throw new Error(`Unexpected __typename '${upsertConfigFile.__typename}'`)
     }
   }
 
   async runSimulation(
     branchId: string,
     seed: number | undefined
-  ): Promise<NewSimulation> {
+  ): Promise<Result<NewSimulation, string[]>> {
     const { createSimulation } = await this.gql.request(
       gql(/* GraphQL */ `
         mutation createSimulation($input: CreateSimulation!) {
           createSimulation(input: $input) {
-            id
-            sinks {
+            ... on Simulation {
               id
+              sinks {
+                id
+              }
+            }
+            ... on CreateSimulationFailure {
+              branchId {
+                message
+              }
             }
           }
         }
@@ -157,9 +160,22 @@ export class ApiClient {
       }
     )
 
-    return {
-      id: createSimulation.id,
-      defaultFileSinkId: createSimulation.sinks[0].id,
+    if (createSimulation.__typename == 'Simulation') {
+      return Ok({
+        id: createSimulation.id,
+        defaultFileSinkId: createSimulation.sinks[0].id,
+      })
+    } else if (createSimulation.__typename == 'CreateSimulationFailure') {
+      if (createSimulation.branchId) {
+        // return Err(createSimulation.branchId.map((e) => e.message))))
+        return Err(['Unknown branchId'])
+      } else {
+        throw new Error(
+          `Unhandled GraphQL error: ${JSON.stringify(createSimulation)}`
+        )
+      }
+    } else {
+      throw new Error(`Unexpected __typename '${createSimulation.__typename}'`)
     }
   }
 

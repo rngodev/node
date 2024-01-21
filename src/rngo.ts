@@ -9,9 +9,8 @@ import { z } from 'zod'
 import * as rngoUtil from './util'
 import {
   ApiClient,
-  ApiError,
   ConfigFile,
-  Simulation,
+  ConfigFileError,
   Sink,
   UpsertConfigFileScm,
   ValidToken,
@@ -167,7 +166,7 @@ export class Rngo {
     return path.join(this.simulationsDir, simulationId)
   }
 
-  async syncConfig(): Promise<Result<ConfigFile, ApiError[]>> {
+  async syncConfig(): Promise<Result<ConfigFile, ConfigFileError[]>> {
     let gqlScm: UpsertConfigFileScm | undefined = undefined
     const scmRepo = await rngoUtil.getScmRepo()
 
