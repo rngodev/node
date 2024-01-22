@@ -90,6 +90,7 @@ export class ApiClient {
       gql(/* GraphQL */ `
         mutation upsertConfigFile($input: UpsertConfigFile!) {
           upsertConfigFile(input: $input) {
+            __typename
             ... on ConfigFile {
               id
               branch {
@@ -118,10 +119,8 @@ export class ApiClient {
         id: upsertConfigFile.id,
         branchId: upsertConfigFile.branch.id,
       })
-    } else if (upsertConfigFile.__typename == 'UpsertConfigFileFailure') {
-      return Err(upsertConfigFile.config || [])
     } else {
-      throw new Error(`Unexpected __typename '${upsertConfigFile.__typename}'`)
+      return Err(upsertConfigFile.config || [])
     }
   }
 
@@ -133,6 +132,7 @@ export class ApiClient {
       gql(/* GraphQL */ `
         mutation createSimulation($input: CreateSimulation!) {
           createSimulation(input: $input) {
+            __typename
             ... on Simulation {
               id
               sinks {
@@ -165,7 +165,7 @@ export class ApiClient {
         id: createSimulation.id,
         defaultFileSinkId: createSimulation.sinks[0].id,
       })
-    } else if (createSimulation.__typename == 'CreateSimulationFailure') {
+    } else {
       if (createSimulation.branchId) {
         // return Err(createSimulation.branchId.map((e) => e.message))))
         return Err(['Unknown branchId'])
@@ -174,8 +174,6 @@ export class ApiClient {
           `Unhandled GraphQL error: ${JSON.stringify(createSimulation)}`
         )
       }
-    } else {
-      throw new Error(`Unexpected __typename '${createSimulation.__typename}'`)
     }
   }
 
