@@ -41,45 +41,57 @@ export default class Run extends Command {
     const syncSpinner = ora('Syncing config').start()
 
     let branchId: string | undefined = undefined
-    const result = await rngo.syncConfig()
+    const syncConfigResult = await rngo.syncConfig()
 
-    if (result.ok) {
+    if (syncConfigResult.ok) {
       syncSpinner.succeed()
-      branchId = result.val.branchId
+      branchId = syncConfigResult.val.branchId
     } else {
       syncSpinner.fail()
-      logUserErrors(this, result.val)
+      logUserErrors(this, syncConfigResult.val)
       errorAndExit(this, 'ConfigInvalid', 'The config is invalid')
     }
 
     const runSpinner = ora('Running simulation').start()
 
-    // const specs = config.specs || {}
-    // const spec = flags.branch ? specs[flags.branch] : specs['default']
+    const runSimulationResult = await rngo.client.runSimulation(
+      branchId!,
+      parsedSeed
+    )
 
-    const simulationId = await rngo.client.runSimulation(branchId!, parsedSeed)
-    const simulation = await rngo.awaitSimulation(simulationId)
+    let simulationId
+    let sink
 
-    if (!simulation) {
-      runSpinner.fail()
-      errorAndExit(this, 'SimTimedOut', 'Simulation timed out')
+    if (runSimulationResult.ok) {
+      simulationId = runSimulationResult.val.id
+      sink = await rngo.awaitSimulationSink(
+        runSimulationResult.val.id,
+        runSimulationResult.val.defaultFileSinkId
+      )
+
+      if (!sink) {
+        runSpinner.fail()
+        errorAndExit(this, 'SimTimedOut', 'Simulation timed out')
+      } else {
+        runSpinner.succeed()
+      }
     } else {
-      runSpinner.succeed()
+      syncSpinner.fail()
+      errorAndExit(
+        this,
+        'UnhandledError',
+        `Unhandled error: ${runSimulationResult.val}`
+      )
     }
 
     const dowloadSpinner = ora('Downloading data').start()
-    await rngo.downloadSimulation(simulation)
+    await rngo.downloadFileSink(simulationId, sink)
     dowloadSpinner.succeed()
 
     const importSpinner = ora('Importing data').start()
-    const shouldImport = simulation.streams.some((simulationStream) => {
-      return simulationStream.systems.some((simulationStreamSystem) => {
-        return simulationStreamSystem.scriptUrls.length > 0
-      })
-    })
 
-    if (shouldImport) {
-      await rngo.importSimulation(simulation)
+    if (sink.importScriptUrl) {
+      await rngo.importSimulation(simulationId)
       importSpinner.succeed()
     } else {
       importSpinner.info('No import scripts found')

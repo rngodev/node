@@ -15,7 +15,7 @@ export class AnonApiClient {
   gql: GraphQLClient
 
   constructor(apiUrl: URL) {
-    this.gql = new GraphQLClient(apiUrl.toString(), {
+    this.gql = new GraphQLClient(`${apiUrl}/graphql`, {
       jsonSerializer: JSONbig({ useNativeBigInt: true }),
     })
   }

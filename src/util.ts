@@ -4,6 +4,7 @@ import nodePath from 'node:path'
 import { setTimeout } from 'node:timers/promises'
 import simpleGit, { SimpleGit } from 'simple-git'
 import TsResult, { Result } from 'ts-results'
+import yauzl from 'yauzl'
 
 import { RngoOptions } from './rngo'
 
@@ -29,8 +30,7 @@ export type InitError =
 export function resolveApiUrl(
   apiUrl: string | undefined
 ): Result<URL, InitError> {
-  const rawUrl =
-    apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev/graphql'
+  const rawUrl = apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev'
 
   try {
     return Ok(new URL(rawUrl))
@@ -92,7 +92,7 @@ export function filePathForUrl(url: string, directory: string) {
 export async function poll<T>(thunk: () => Promise<T>): Promise<T | undefined> {
   let value
 
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     value = await thunk()
 
     if (value) {
@@ -175,4 +175,49 @@ export async function getScmRepo(): Promise<ScmRepo | undefined> {
   } else {
     return Promise.resolve(undefined)
   }
+}
+
+export async function unzip(
+  zipPath: string,
+  destination: string
+): Promise<void> {
+  yauzl.open(zipPath, { lazyEntries: true }, function (err, zipFile) {
+    if (err) throw err
+    zipFile.readEntry()
+
+    zipFile.on('entry', async (entry) => {
+      if (entry.fileName.endsWith('/')) {
+        // Directory
+        await nodeFs.mkdir(`${destination}/${entry.fileName}`, {
+          recursive: true,
+        })
+        zipFile.readEntry()
+      } else {
+        // File
+        zipFile.openReadStream(entry, async (err, readStream) => {
+          if (err) throw err
+
+          readStream.on('end', () => {
+            zipFile.readEntry()
+          })
+
+          const entryOutputDir = nodePath.join(
+            destination,
+            nodePath.dirname(entry.fileName)
+          )
+
+          const exists = await fileExists(entryOutputDir)
+          if (!exists) {
+            await nodeFs.mkdir(entryOutputDir, { recursive: true })
+          }
+
+          const outFile = await nodeFs.open(
+            `${destination}/${entry.fileName}`,
+            'w'
+          )
+          readStream.pipe(outFile.createWriteStream())
+        })
+      }
+    })
+  })
 }
