@@ -1,173 +1,59 @@
 import { Command } from '@oclif/core'
 import chalk from 'chalk'
-import inquirer from 'inquirer'
-import { Document, YAMLMap } from 'yaml'
-import { z } from 'zod'
+import ora from 'ora'
+import path from 'path'
 
 import * as rngoUtil from '@util'
-
-import { getRngoOrExit } from '@cli/util'
-
-type Choices = {
-  organizationId: string
-  systemTypes: ('redis' | 'postgres')[]
-}
+import { Rngo } from '@main'
 
 export default class Init extends Command {
   static description = 'Initialize this repo for rngo'
 
   async run() {
-    const rngo = await getRngoOrExit(this)
+    const configFilePath = Rngo.defaultConfigFilePath()
+    const relativePath = path.relative(process.cwd(), configFilePath)
 
-    if (await rngoUtil.fileExists(rngo.configPath)) {
-      this.log(chalk.bold('This repo has already been initialized'))
-      this.log(
-        `To add a new system, run: ${chalk.yellow.bold('rngo system add')}`
-      )
-      this.log(`Or, edit ${chalk.yellow.bold(rngo.configPath)} directly`)
-      this.log()
-      this.log(
-        `See ${chalk.yellow.bold('https://rngo.dev/docs/cli/conf')} for details`
-      )
-      this.exit()
+    const fileSpinner = ora(`Initializing config at ${relativePath}`).start()
+
+    if (await rngoUtil.fileExists(configFilePath)) {
+      fileSpinner.warn(chalk.yellow(`Config file exists at ${relativePath}`))
+    } else {
+      fileSpinner.succeed()
+      await rngoUtil.writeFile(configFilePath, InitialConfig)
     }
 
-    const orgs = await rngo.client.getOrganizations()
-
-    const rawChoices = await inquirer.prompt([
-      {
-        name: 'organizationId',
-        type: 'list',
-        message: 'Which organization does this repo belong to?',
-        when: orgs.length > 1,
-        choices: orgs.map((org) => {
-          return { name: org.name, value: org.id }
-        }),
-      },
-      {
-        type: 'checkbox',
-        name: 'systemTypes',
-        message: 'Where does this repo store its data?',
-        choices: [
-          {
-            name: 'PostgreSQL',
-            value: 'postgres',
-          },
-          {
-            name: 'Redis',
-            value: 'redis',
-          },
-        ],
-      },
-    ])
-
-    const choices = z
-      .object({
-        organizationId: z.string().cuid().optional(),
-        systemTypes: z.enum(['postgres', 'redis']).array(),
-      })
-      .transform((val) => {
-        return {
-          ...val,
-          organizationId: val.organizationId || orgs[0].id,
-        }
-      })
-      .parse(rawChoices)
-
-    rngoUtil.writeFile(rngo.configPath, configDocument(choices).toString())
-
     this.log()
-    this.log(chalk.bold('Initialized the repo for rngo'))
-    const object =
-      choices.systemTypes.length > 1 ? 'the systems' : choices.systemTypes[0]
-    this.log(
-      `Finish configuring ${object} directly in ${chalk.yellow.bold(
-        rngo.configPath
-      )}`
-    )
-    this.log(
-      `To generate an initial simulation config, run: ${chalk.yellow.bold(
-        'rngo conf create'
-      )}`
-    )
+    this.log(chalk.dim.green.bold('Your project is initialized for rngo!'))
+    this.log()
+    this.log('Next, add these lines to your .gitignore:')
+    this.log(chalk.dim(` .rngo/*`))
+    this.log(chalk.dim(` !.rngo/config.yml`))
   }
 }
 
-export function configDocument(choices: Choices): Document {
-  const doc = new Document({})
+const InitialConfig = `# A system enables seamless data import and stream inference.
+#
+# For more information, see: https://rngo.dev/docs/reference/systems.
+systems:
+# Defines a system named "db" for a Postgres database:
+#   db:
+#     type: postgres
 
-  const orgIdKey = doc.createNode('organizationId')
-  orgIdKey.commentBefore = ` To change organizations, run 'rngo org set'`
-  doc.set(orgIdKey, choices.organizationId)
-
-  const scenariosKey = doc.createNode('scenarios')
-  scenariosKey.commentBefore = ` change this`
-  scenariosKey.spaceBefore = true
-  doc.set(scenariosKey, {
-    seed: 1,
-    start: '1 week ago',
-  })
-
-  if (choices.systemTypes.length > 0) {
-    const systems = new YAMLMap()
-
-    choices.systemTypes.forEach((st) => {
-      if (st === 'postgres') {
-        systems.add({
-          key: 'postgres',
-          value: {
-            type: 'postgres',
-            host: {
-              env: 'POSTGRES_HOST',
-              default: 'localhost',
-            },
-            port: {
-              env: 'POSTGRES_PORT',
-              default: 5432,
-            },
-            user: {
-              env: 'POSTGRES_USER',
-            },
-            password: {
-              env: 'POSTGRES_PASSWORD',
-            },
-            database: {
-              env: 'POSTGRES_DATABASE',
-            },
-            schema: {
-              env: 'POSTGRES_SCHEMA',
-              default: 'public',
-            },
-          },
-        })
-      } else if (st === 'redis') {
-        systems.add({
-          key: 'redis',
-          value: {
-            type: 'redis',
-            host: {
-              env: 'REDIS_HOST',
-              default: 'localhost',
-            },
-            port: {
-              env: 'REDIS_PORT',
-              default: 6379,
-            },
-            password: {
-              env: 'REDIS_PASSWORD',
-            },
-          },
-        })
-      }
-    })
-
-    const systemsKey = doc.createNode('systems')
-    systemsKey.commentBefore =
-      ' See https://rngo.dev/docs/cli/config for system config details'
-    systemsKey.spaceBefore = true
-
-    doc.set(systemsKey, systems)
-  }
-
-  return doc
-}
+# A stream defines a schema for a data source. They generally map to tables
+# in relational DBs. Whenever possible, they should be inferred from a system.
+#
+# For more information, see: https://rngo.dev/docs/reference/streams
+streams:
+# Defines a stream named "users":
+#  users:
+#    systems:
+#      db:
+#        table: USERS
+#    schema:
+#      type: object
+#      properties:
+#        id:
+#          type: integer
+#        full_name:
+#          type: string
+`
