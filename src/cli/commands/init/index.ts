@@ -1,5 +1,6 @@
 import { Command } from '@oclif/core'
 import chalk from 'chalk'
+import { promises as fs } from 'fs'
 import ora from 'ora'
 import path from 'path'
 
@@ -12,22 +13,56 @@ export default class Init extends Command {
   async run() {
     const configFilePath = Rngo.defaultConfigFilePath()
     const relativePath = path.relative(process.cwd(), configFilePath)
+    const changedFiles: string[] = []
 
     const fileSpinner = ora(`Initializing config at ${relativePath}`).start()
 
     if (await rngoUtil.fileExists(configFilePath)) {
-      fileSpinner.warn(chalk.yellow(`Config file exists at ${relativePath}`))
+      fileSpinner.succeed(chalk.yellow(`${relativePath} already exists`))
     } else {
+      changedFiles.push(configFilePath)
       fileSpinner.succeed()
       await rngoUtil.writeFile(configFilePath, InitialConfig)
     }
 
+    const git = await rngoUtil.maybeGit()
+
+    if (git) {
+      const gitIgnoreSpinner = ora('Updating .gitignore').start()
+      const gitIgnorePath = path.join(process.cwd(), '.gitignore')
+
+      if (await rngoUtil.fileExists(gitIgnorePath)) {
+        const gitIgnoreContents = await rngoUtil.readFile(gitIgnorePath)
+        const referencesRngo = gitIgnoreContents?.includes(GitIngoreLines)
+
+        if (referencesRngo) {
+          gitIgnoreSpinner.succeed(
+            chalk.yellow('.gitignore already setup for rngo')
+          )
+        } else {
+          await fs.appendFile(gitIgnorePath, GitIngoreLines)
+          changedFiles.push(gitIgnorePath)
+          gitIgnoreSpinner.succeed()
+        }
+      } else {
+        rngoUtil.writeFile(gitIgnorePath, GitIngoreLines)
+        changedFiles.push(gitIgnorePath)
+        gitIgnoreSpinner.succeed()
+      }
+
+      if (changedFiles.length > 0) {
+        const gitAddSpinner = ora('Adding files to git').start()
+        await git.add(changedFiles)
+        gitAddSpinner.succeed()
+      }
+    }
+
     this.log()
     this.log(chalk.dim.green.bold('Your project is initialized for rngo!'))
-    this.log()
-    this.log('Next, add these lines to your .gitignore:')
-    this.log(chalk.dim(` .rngo/*`))
-    this.log(chalk.dim(` !.rngo/config.yml`))
+
+    if (git && changedFiles.length > 0) {
+      this.log(chalk.dim('Just review the changes and commit'))
+    }
   }
 }
 
@@ -56,4 +91,8 @@ streams:
 #          type: integer
 #        full_name:
 #          type: string
+`
+
+const GitIngoreLines = `.rngo/*
+!.rngo/config.yml
 `
