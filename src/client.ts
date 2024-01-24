@@ -5,18 +5,13 @@ import TsResult, { Result } from 'ts-results'
 import { z } from 'zod'
 
 import { gql } from './gql/gql'
-import {
-  GetOrganizationsQuery,
-  GetSimulationQuery,
-  UpsertConfigFileScm,
-} from './gql/graphql'
+import { GetSimulationQuery, UpsertConfigFileScm } from './gql/graphql'
 import { Config } from './rngo'
 
 const { Err, Ok } = TsResult
 
 export type ConfigFile = { id: string; branchId: string }
 export type ConfigFileError = { path: string[]; message: string }
-export type Organization = GetOrganizationsQuery['organizations'][number]
 export { UpsertConfigFileScm }
 export type NewSimulation = { id: string; defaultFileSinkId: string }
 export type Simulation = NonNullable<GetSimulationQuery['simulation']>
@@ -64,22 +59,6 @@ export class ApiClient {
         'auth-provider': 'clerk',
       },
     })
-  }
-
-  async getOrganizations(): Promise<Organization[]> {
-    const { organizations } = await this.gql.request(
-      gql(/* GraphQL */ `
-        query getOrganizations {
-          organizations {
-            id
-            name
-            createdAt
-          }
-        }
-      `)
-    )
-
-    return organizations
   }
 
   async syncConfig(

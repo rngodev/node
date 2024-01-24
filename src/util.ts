@@ -157,11 +157,18 @@ interface ScmRepo {
   commitHash: string
 }
 
-export async function getScmRepo(): Promise<ScmRepo | undefined> {
-  const git: SimpleGit = simpleGit()
-  const isGit = await git.checkIsRepo()
+export async function maybeGit(): Promise<SimpleGit | undefined> {
+  const git = simpleGit()
 
-  if (isGit) {
+  if (await git.checkIsRepo()) {
+    return git
+  }
+}
+
+export async function getScmRepo(): Promise<ScmRepo | undefined> {
+  const git = await maybeGit()
+
+  if (git) {
     const repoPath = await git.revparse(['--show-toplevel'])
     const branch = await git.revparse(['--abbrev-ref', 'HEAD'])
     const commitHash = await git.revparse(['HEAD'])
@@ -172,8 +179,6 @@ export async function getScmRepo(): Promise<ScmRepo | undefined> {
       branch,
       commitHash,
     }
-  } else {
-    return Promise.resolve(undefined)
   }
 }
 

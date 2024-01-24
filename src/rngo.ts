@@ -39,6 +39,14 @@ type ParsedRngoOptions = {
 }
 
 export class Rngo {
+  static defaultDirectoryPath() {
+    return path.join(process.cwd(), '.rngo')
+  }
+
+  static defaultConfigFilePath(directory: string | undefined = undefined) {
+    return path.join(directory || this.defaultDirectoryPath(), 'config.yml')
+  }
+
   static async init(
     options: Partial<RngoOptions>
   ): Promise<Result<Rngo, InitError[]>> {
@@ -86,8 +94,8 @@ export class Rngo {
       })
     }
 
-    let directory = options.directory || path.join('.', '.rngo')
-    let configPath = options.configPath || path.join(directory, 'config.yml')
+    let directory = options.directory || this.defaultDirectoryPath()
+    let configPath = options.configPath || this.defaultConfigFilePath(directory)
     let config: Config
 
     if (await rngoUtil.fileExists(configPath)) {

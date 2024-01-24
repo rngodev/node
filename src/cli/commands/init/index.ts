@@ -1,173 +1,98 @@
 import { Command } from '@oclif/core'
 import chalk from 'chalk'
-import inquirer from 'inquirer'
-import { Document, YAMLMap } from 'yaml'
-import { z } from 'zod'
+import { promises as fs } from 'fs'
+import ora from 'ora'
+import path from 'path'
 
 import * as rngoUtil from '@util'
-
-import { getRngoOrExit } from '@cli/util'
-
-type Choices = {
-  organizationId: string
-  systemTypes: ('redis' | 'postgres')[]
-}
+import { Rngo } from '@main'
 
 export default class Init extends Command {
   static description = 'Initialize this repo for rngo'
 
   async run() {
-    const rngo = await getRngoOrExit(this)
+    const configFilePath = Rngo.defaultConfigFilePath()
+    const relativePath = path.relative(process.cwd(), configFilePath)
+    const changedFiles: string[] = []
 
-    if (await rngoUtil.fileExists(rngo.configPath)) {
-      this.log(chalk.bold('This repo has already been initialized'))
-      this.log(
-        `To add a new system, run: ${chalk.yellow.bold('rngo system add')}`
-      )
-      this.log(`Or, edit ${chalk.yellow.bold(rngo.configPath)} directly`)
-      this.log()
-      this.log(
-        `See ${chalk.yellow.bold('https://rngo.dev/docs/cli/conf')} for details`
-      )
-      this.exit()
+    const fileSpinner = ora(`Initializing config at ${relativePath}`).start()
+
+    if (await rngoUtil.fileExists(configFilePath)) {
+      fileSpinner.succeed(chalk.yellow(`${relativePath} already exists`))
+    } else {
+      changedFiles.push(configFilePath)
+      fileSpinner.succeed()
+      await rngoUtil.writeFile(configFilePath, InitialConfig)
     }
 
-    const orgs = await rngo.client.getOrganizations()
+    const git = await rngoUtil.maybeGit()
 
-    const rawChoices = await inquirer.prompt([
-      {
-        name: 'organizationId',
-        type: 'list',
-        message: 'Which organization does this repo belong to?',
-        when: orgs.length > 1,
-        choices: orgs.map((org) => {
-          return { name: org.name, value: org.id }
-        }),
-      },
-      {
-        type: 'checkbox',
-        name: 'systemTypes',
-        message: 'Where does this repo store its data?',
-        choices: [
-          {
-            name: 'PostgreSQL',
-            value: 'postgres',
-          },
-          {
-            name: 'Redis',
-            value: 'redis',
-          },
-        ],
-      },
-    ])
+    if (git) {
+      const gitIgnoreSpinner = ora('Updating .gitignore').start()
+      const gitIgnorePath = path.join(process.cwd(), '.gitignore')
 
-    const choices = z
-      .object({
-        organizationId: z.string().cuid().optional(),
-        systemTypes: z.enum(['postgres', 'redis']).array(),
-      })
-      .transform((val) => {
-        return {
-          ...val,
-          organizationId: val.organizationId || orgs[0].id,
+      if (await rngoUtil.fileExists(gitIgnorePath)) {
+        const gitIgnoreContents = await rngoUtil.readFile(gitIgnorePath)
+        const referencesRngo = gitIgnoreContents?.includes(GitIngoreLines)
+
+        if (referencesRngo) {
+          gitIgnoreSpinner.succeed(
+            chalk.yellow('.gitignore already setup for rngo')
+          )
+        } else {
+          await fs.appendFile(gitIgnorePath, GitIngoreLines)
+          changedFiles.push(gitIgnorePath)
+          gitIgnoreSpinner.succeed()
         }
-      })
-      .parse(rawChoices)
+      } else {
+        rngoUtil.writeFile(gitIgnorePath, GitIngoreLines)
+        changedFiles.push(gitIgnorePath)
+        gitIgnoreSpinner.succeed()
+      }
 
-    rngoUtil.writeFile(rngo.configPath, configDocument(choices).toString())
+      if (changedFiles.length > 0) {
+        const gitAddSpinner = ora('Adding files to git').start()
+        await git.add(changedFiles)
+        gitAddSpinner.succeed()
+      }
+    }
 
     this.log()
-    this.log(chalk.bold('Initialized the repo for rngo'))
-    const object =
-      choices.systemTypes.length > 1 ? 'the systems' : choices.systemTypes[0]
-    this.log(
-      `Finish configuring ${object} directly in ${chalk.yellow.bold(
-        rngo.configPath
-      )}`
-    )
-    this.log(
-      `To generate an initial simulation config, run: ${chalk.yellow.bold(
-        'rngo conf create'
-      )}`
-    )
+    this.log(chalk.dim.green.bold('Your project is initialized for rngo!'))
+
+    if (git && changedFiles.length > 0) {
+      this.log(chalk.dim('Just review the changes and commit'))
+    }
   }
 }
 
-export function configDocument(choices: Choices): Document {
-  const doc = new Document({})
+const InitialConfig = `# A system enables seamless data import and stream inference.
+#
+# For more information, see: https://rngo.dev/docs/reference/systems.
+systems:
+# Defines a system named "db" for a Postgres database:
+#   db:
+#     type: postgres
 
-  const orgIdKey = doc.createNode('organizationId')
-  orgIdKey.commentBefore = ` To change organizations, run 'rngo org set'`
-  doc.set(orgIdKey, choices.organizationId)
+# A stream defines a schema for a data source. They generally map to tables
+# in relational DBs. Whenever possible, they should be inferred from a system.
+#
+# For more information, see: https://rngo.dev/docs/reference/streams
+streams:
+# Defines a stream named "users":
+#  users:
+#    systems:
+#      db:
+#        table: USERS
+#    schema:
+#      type: object
+#      properties:
+#        id:
+#          type: integer
+#        full_name:
+#          type: string
+`
 
-  const scenariosKey = doc.createNode('scenarios')
-  scenariosKey.commentBefore = ` change this`
-  scenariosKey.spaceBefore = true
-  doc.set(scenariosKey, {
-    seed: 1,
-    start: '1 week ago',
-  })
-
-  if (choices.systemTypes.length > 0) {
-    const systems = new YAMLMap()
-
-    choices.systemTypes.forEach((st) => {
-      if (st === 'postgres') {
-        systems.add({
-          key: 'postgres',
-          value: {
-            type: 'postgres',
-            host: {
-              env: 'POSTGRES_HOST',
-              default: 'localhost',
-            },
-            port: {
-              env: 'POSTGRES_PORT',
-              default: 5432,
-            },
-            user: {
-              env: 'POSTGRES_USER',
-            },
-            password: {
-              env: 'POSTGRES_PASSWORD',
-            },
-            database: {
-              env: 'POSTGRES_DATABASE',
-            },
-            schema: {
-              env: 'POSTGRES_SCHEMA',
-              default: 'public',
-            },
-          },
-        })
-      } else if (st === 'redis') {
-        systems.add({
-          key: 'redis',
-          value: {
-            type: 'redis',
-            host: {
-              env: 'REDIS_HOST',
-              default: 'localhost',
-            },
-            port: {
-              env: 'REDIS_PORT',
-              default: 6379,
-            },
-            password: {
-              env: 'REDIS_PASSWORD',
-            },
-          },
-        })
-      }
-    })
-
-    const systemsKey = doc.createNode('systems')
-    systemsKey.commentBefore =
-      ' See https://rngo.dev/docs/cli/config for system config details'
-    systemsKey.spaceBefore = true
-
-    doc.set(systemsKey, systems)
-  }
-
-  return doc
-}
+const GitIngoreLines = `.rngo/*
+!.rngo/config.yml
+`
