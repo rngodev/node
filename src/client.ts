@@ -2,10 +2,9 @@ import { GraphQLClient } from 'graphql-request'
 import JSONbig from 'json-bigint'
 import jwt, { type JwtPayload } from 'jsonwebtoken'
 import TsResult, { Result } from 'ts-results'
-import { z } from 'zod'
 
 import { gql } from './gql/gql'
-import { GetSimulationQuery, UpsertConfigFileScm } from './gql/graphql'
+import { Simulation, UpsertConfigFileScm } from './gql/graphql'
 import { Config } from './rngo'
 
 const { Err, Ok } = TsResult
@@ -14,10 +13,8 @@ export type ConfigFile = { id: string; branchId: string }
 export type ConfigFileError = { path: string[]; message: string }
 export { UpsertConfigFileScm }
 export type NewSimulation = { id: string; defaultFileSinkId: string }
-export type Simulation = NonNullable<GetSimulationQuery['simulation']>
-export type Sink = NonNullable<
-  NonNullable<GetSimulationQuery['simulation']>['sinks'][number]
->
+export type Sink = NonNullable<Simulation['sinks'][number]>
+export type NewSink = { id: string; simulationId: string }
 
 export type ValidToken = {
   token: string
@@ -103,7 +100,7 @@ export class ApiClient {
     }
   }
 
-  async runSimulation(
+  async createSimulation(
     branchId: string,
     seed: number | undefined
   ): Promise<Result<NewSimulation, string[]>> {
@@ -184,6 +181,58 @@ export class ApiClient {
       return undefined
     } else {
       return simulation
+    }
+  }
+
+  async drainSimulationToFile(
+    simulationId: string
+  ): Promise<Result<NewSink, string[]>> {
+    const { drainSimulationToFile } = await this.gql.request(
+      gql(/* GraphQL */ `
+        mutation drainSimulationToFile($input: DrainSimulationToFile!) {
+          drainSimulationToFile(input: $input) {
+            __typename
+            ... on FileSink {
+              id
+            }
+            ... on DrainSimulationToFileValidationError {
+              simulationId {
+                message
+              }
+            }
+            ... on Error {
+              message
+            }
+          }
+        }
+      `),
+      {
+        input: {
+          simulationId,
+        },
+      }
+    )
+
+    if (drainSimulationToFile.__typename == 'FileSink') {
+      return Ok({
+        id: drainSimulationToFile.id,
+        simulationId: simulationId,
+      })
+    } else if (
+      drainSimulationToFile.__typename ==
+        'DrainSimulationToFileValidationError' &&
+      drainSimulationToFile.simulationId
+    ) {
+      return Err(drainSimulationToFile.simulationId.map((e) => e.message))
+    } else if (
+      drainSimulationToFile.__typename == 'PaymentError' ||
+      drainSimulationToFile.__typename == 'CapacityError'
+    ) {
+      return Err([drainSimulationToFile.message])
+    } else {
+      throw new Error(
+        `Unhandled GraphQL error: ${JSON.stringify(drainSimulationToFile)}`
+      )
     }
   }
 }
