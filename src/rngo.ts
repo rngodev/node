@@ -11,7 +11,7 @@ import {
   ApiClient,
   ConfigFile,
   ConfigFileError,
-  Sink,
+  FileSink,
   UpsertConfigFileScm,
   ValidToken,
   parseToken,
@@ -190,26 +190,28 @@ export class Rngo {
     return this.client.syncConfig(this.config, gqlScm)
   }
 
-  async awaitSimulationSink(
+  async waitForDrainedSink(
     simulationId: string,
     sinkId: string
-  ): Promise<Sink | undefined> {
-    return rngoUtil.poll(async () => {
-      const simulation = await this.client.getSimulation(simulationId)
+  ): Promise<boolean> {
+    const result = await rngoUtil.poll(async () => {
+      const sinks = await this.client.getSimulationSinkStates(simulationId)
 
-      if (simulation) {
-        const sink = simulation.sinks.find((sink) => sink.id === sinkId)
+      if (sinks) {
+        const sink = sinks.find((sink) => sink.id === sinkId)
 
         if (sink?.completedAt) {
-          return sink
+          return true
         }
       }
     })
+
+    return result || false
   }
 
   async downloadFileSink(
     simulationId: string,
-    fileSink: Sink
+    fileSink: FileSink
   ): Promise<string | undefined> {
     const exists = await rngoUtil.fileExists(this.simulationsDir)
 

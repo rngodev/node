@@ -4,7 +4,7 @@ import jwt, { type JwtPayload } from 'jsonwebtoken'
 import TsResult, { Result } from 'ts-results'
 
 import { gql } from './gql/gql'
-import { Simulation, UpsertConfigFileScm } from './gql/graphql'
+import { GetSimulationQuery, UpsertConfigFileScm } from './gql/graphql'
 import { Config } from './rngo'
 
 const { Err, Ok } = TsResult
@@ -13,8 +13,17 @@ export type ConfigFile = { id: string; branchId: string }
 export type ConfigFileError = { path: string[]; message: string }
 export { UpsertConfigFileScm }
 export type NewSimulation = { id: string; defaultFileSinkId: string }
-export type Sink = NonNullable<Simulation['sinks'][number]>
-export type NewSink = { id: string; simulationId: string }
+export type SinkState = NonNullable<
+  GetSimulationQuery['simulation']
+>['sinks'][number]
+export type FileSink = {
+  id: string
+  simulationId: string
+  importScriptUrl?: string
+  archives: {
+    url: string
+  }[]
+}
 
 export type ValidToken = {
   token: string
@@ -153,7 +162,9 @@ export class ApiClient {
     }
   }
 
-  async getSimulation(simulationId: string): Promise<Simulation | undefined> {
+  async getSimulationSinkStates(
+    simulationId: string
+  ): Promise<SinkState[] | undefined> {
     const { simulation } = await this.gql.request(
       gql(/* GraphQL */ `
         query getSimulation($id: String!) {
@@ -162,12 +173,6 @@ export class ApiClient {
             sinks {
               id
               completedAt
-              ... on FileSink {
-                importScriptUrl
-                archives {
-                  url
-                }
-              }
             }
           }
         }
@@ -180,13 +185,13 @@ export class ApiClient {
     if (simulation === null) {
       return undefined
     } else {
-      return simulation
+      return simulation?.sinks
     }
   }
 
   async drainSimulationToFile(
     simulationId: string
-  ): Promise<Result<NewSink, string[]>> {
+  ): Promise<Result<FileSink, string[]>> {
     const { drainSimulationToFile } = await this.gql.request(
       gql(/* GraphQL */ `
         mutation drainSimulationToFile($input: DrainSimulationToFile!) {
@@ -194,6 +199,10 @@ export class ApiClient {
             __typename
             ... on FileSink {
               id
+              importScriptUrl
+              archives {
+                url
+              }
             }
             ... on DrainSimulationToFileValidationError {
               simulationId {
@@ -217,6 +226,8 @@ export class ApiClient {
       return Ok({
         id: drainSimulationToFile.id,
         simulationId: simulationId,
+        importScriptUrl: drainSimulationToFile.importScriptUrl || undefined,
+        archives: drainSimulationToFile.archives,
       })
     } else if (
       drainSimulationToFile.__typename ==

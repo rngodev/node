@@ -54,33 +54,44 @@ export default class Run extends Command {
 
     const runSpinner = ora('Running simulation').start()
 
-    const runSimulationResult = await rngo.client.runSimulation(
+    const createSimulationResult = await rngo.client.createSimulation(
       branchId!,
       parsedSeed
     )
 
     let simulationId
-    let sink
 
-    if (runSimulationResult.ok) {
-      simulationId = runSimulationResult.val.id
-      sink = await rngo.awaitSimulationSink(
-        runSimulationResult.val.id,
-        runSimulationResult.val.defaultFileSinkId
-      )
-
-      if (!sink) {
-        runSpinner.fail()
-        errorAndExit(this, 'SimTimedOut', 'Simulation timed out')
-      } else {
-        runSpinner.succeed()
-      }
+    if (createSimulationResult.ok) {
+      simulationId = createSimulationResult.val.id
     } else {
-      syncSpinner.fail()
+      runSpinner.fail()
       errorAndExit(
         this,
         'UnhandledError',
-        `Unhandled error: ${runSimulationResult.val}`
+        `Unhandled error: ${createSimulationResult.val}`
+      )
+    }
+
+    const drainResult = await rngo.client.drainSimulationToFile(simulationId)
+
+    let sink
+
+    if (drainResult.ok) {
+      sink = drainResult.val
+      const success = await rngo.waitForDrainedSink(simulationId, sink.id)
+
+      if (success) {
+        runSpinner.succeed()
+      } else {
+        runSpinner.fail()
+        errorAndExit(this, 'SimTimedOut', 'Simulation timed out')
+      }
+    } else {
+      runSpinner.fail()
+      errorAndExit(
+        this,
+        'UnhandledError',
+        `Unhandled error: ${drainResult.val}`
       )
     }
 
