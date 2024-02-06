@@ -1,4 +1,5 @@
 import { GraphQLClient } from 'graphql-request'
+import JSONbig from 'json-bigint'
 import { execFile } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -137,7 +138,7 @@ export class Rngo {
         errors.push({
           code: 'invalidOption',
           key: 'apiToken',
-          message: `${key} is ${result.err}`,
+          message: `${key} is ${result.val}`,
         })
       }
     } else {
@@ -480,9 +481,4 @@ export class Rngo {
       cwd: directory,
     })
   }
-}
-function JSONbig(arg0: {
-  useNativeBigInt: boolean
-}): import('graphql-request/build/esm/types.dom').JsonSerializer | undefined {
-  throw new Error('Function not implemented.')
 }
