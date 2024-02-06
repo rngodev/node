@@ -46,7 +46,61 @@ export type FileSink = {
   }[]
 }
 
+export type DeviceAuth = {
+  userCode: string
+  verificationUrl: string
+  verify: () => Promise<string | undefined>
+}
+
 export class Rngo {
+  static async authDevice(options?: {
+    apiUrl: string
+  }): Promise<Result<DeviceAuth, InitError>> {
+    const apiUrlResult = rngoUtil.resolveApiUrl(options?.apiUrl)
+
+    if (apiUrlResult.ok) {
+      const gqlClient = new GraphQLClient(apiUrlResult.val.toString())
+      const { authCli } = await gqlClient.request(
+        gql(/* GraphQL */ `
+          mutation authCli {
+            authCli {
+              cliCode
+              userCode
+              verificationUrl
+            }
+          }
+        `)
+      )
+
+      return Ok({
+        userCode: authCli.userCode,
+        verificationUrl: authCli.verificationUrl,
+        verify: async () => {
+          const token = await rngoUtil.poll(async () => {
+            const result = await gqlClient.request(
+              gql(/* GraphQL */ `
+                query getVerifiedCliAuth($cliCode: String!) {
+                  verifiedCliAuth(cliCode: $cliCode) {
+                    token
+                  }
+                }
+              `),
+              {
+                cliCode: authCli.cliCode,
+              }
+            )
+
+            return result.verifiedCliAuth?.token
+          })
+
+          return token
+        },
+      })
+    } else {
+      return Err(apiUrlResult.val)
+    }
+  }
+
   static defaultDirectoryPath() {
     return path.join(process.cwd(), '.rngo')
   }
