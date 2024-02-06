@@ -1,3 +1,4 @@
+import { GraphQLClient } from 'graphql-request'
 import { execFile } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -7,16 +8,9 @@ import YAML from 'yaml'
 import { z } from 'zod'
 
 import * as rngoUtil from './util'
-import {
-  ApiClient,
-  ConfigFile,
-  ConfigFileError,
-  FileSink,
-  UpsertConfigFileScm,
-  ValidToken,
-  parseToken,
-} from './client'
-import { InitError } from './util'
+import { gql } from './gql/gql'
+import { UpsertConfigFileScm } from './gql/graphql'
+import { InitError, ValidJwtToken } from './util'
 
 const { Err, Ok } = TsResult
 
@@ -31,11 +25,25 @@ export type RngoOptions = {
 }
 
 type ParsedRngoOptions = {
-  apiToken: ValidToken
+  apiToken: ValidJwtToken
   apiUrl: URL
   config: Config
   configPath: string
   directory: string
+}
+
+export type ConfigFile = { id: string; branchId: string }
+export type ConfigFileError = { path: string[]; message: string }
+
+export type NewSimulation = { id: string; defaultFileSinkId: string }
+
+export type FileSink = {
+  id: string
+  simulationId: string
+  importScriptUrl?: string
+  archives: {
+    url: string
+  }[]
 }
 
 export class Rngo {
@@ -63,10 +71,10 @@ export class Rngo {
     }
 
     const rawToken = options.apiToken || process.env['RNGO_API_TOKEN']
-    let apiToken: ValidToken
+    let apiToken: ValidJwtToken
 
     if (rawToken) {
-      const result = parseToken(rawToken)
+      const result = rngoUtil.parseJwtToken(rawToken)
 
       if (result.ok) {
         apiToken = result.val
@@ -152,14 +160,22 @@ export class Rngo {
   configPath: string
   directory: string
   apiUrl: URL
-  client: ApiClient
+  gqlClient: GraphQLClient
 
-  constructor(options: ParsedRngoOptions) {
+  constructor(options: ParsedRngoOptions, gqlClient?: GraphQLClient) {
     this.config = options.config
     this.configPath = options.configPath
     this.directory = options.directory
     this.apiUrl = options.apiUrl
-    this.client = new ApiClient(options.apiUrl, options.apiToken)
+    this.gqlClient =
+      gqlClient ||
+      new GraphQLClient(`${options.apiUrl}/graphql`, {
+        jsonSerializer: JSONbig({ useNativeBigInt: true }),
+        headers: {
+          authorization: `Bearer ${options.apiToken.token}`,
+          'auth-provider': 'clerk',
+        },
+      })
   }
 
   get lastSimulationDir() {
@@ -187,7 +203,145 @@ export class Rngo {
       }
     }
 
-    return this.client.syncConfig(this.config, gqlScm)
+    const { upsertConfigFile } = await this.gqlClient.request(
+      gql(/* GraphQL */ `
+        mutation upsertConfigFile($input: UpsertConfigFile!) {
+          upsertConfigFile(input: $input) {
+            __typename
+            ... on ConfigFile {
+              id
+              branch {
+                id
+              }
+            }
+            ... on UpsertConfigFileFailure {
+              config {
+                path
+                message
+              }
+            }
+          }
+        }
+      `),
+      {
+        input: {
+          config: this.config,
+          scm: gqlScm,
+        },
+      }
+    )
+
+    if (upsertConfigFile.__typename == 'ConfigFile') {
+      return Ok({
+        id: upsertConfigFile.id,
+        branchId: upsertConfigFile.branch.id,
+      })
+    } else {
+      return Err(upsertConfigFile.config || [])
+    }
+  }
+
+  async createSimulation(
+    branchId: string,
+    seed: number | undefined
+  ): Promise<Result<string, string[]>> {
+    const { createSimulation } = await this.gqlClient.request(
+      gql(/* GraphQL */ `
+        mutation createSimulation($input: CreateSimulation!) {
+          createSimulation(input: $input) {
+            __typename
+            ... on Simulation {
+              id
+            }
+            ... on CreateSimulationFailure {
+              branchId {
+                message
+              }
+            }
+          }
+        }
+      `),
+      {
+        // TODO: 1. pass in spec name, once server knows about specs
+        // 2. overrides come from CLI args
+        input: {
+          branchId,
+          seed,
+          // seed: spec?.seed,
+          // start: spec?.start,
+          // end: spec?.end,
+        },
+      }
+    )
+
+    if (createSimulation.__typename == 'Simulation') {
+      return Ok(createSimulation.id)
+    } else if (createSimulation.branchId) {
+      // return Err(createSimulation.branchId.map((e) => e.message))))
+      return Err(['Unknown branchId'])
+    } else {
+      throw new Error(
+        `Unhandled GraphQL error: ${JSON.stringify(createSimulation)}`
+      )
+    }
+  }
+
+  async drainSimulationToFile(
+    simulationId: string
+  ): Promise<Result<FileSink, string[]>> {
+    const { drainSimulationToFile } = await this.gqlClient.request(
+      gql(/* GraphQL */ `
+        mutation drainSimulationToFile($input: DrainSimulationToFile!) {
+          drainSimulationToFile(input: $input) {
+            __typename
+            ... on FileSink {
+              id
+              importScriptUrl
+              archives {
+                url
+              }
+            }
+            ... on DrainSimulationToFileValidationError {
+              simulationId {
+                message
+              }
+            }
+            ... on Error {
+              message
+            }
+          }
+        }
+      `),
+      {
+        input: {
+          simulationId,
+        },
+      }
+    )
+
+    if (drainSimulationToFile.__typename == 'FileSink') {
+      return Ok({
+        id: drainSimulationToFile.id,
+        simulationId: simulationId,
+        importScriptUrl: drainSimulationToFile.importScriptUrl || undefined,
+        archives: drainSimulationToFile.archives,
+      })
+    } else if (
+      drainSimulationToFile.__typename ==
+        'DrainSimulationToFileValidationError' &&
+      drainSimulationToFile.simulationId
+    ) {
+      return Err(drainSimulationToFile.simulationId.map((e) => e.message))
+    } else if (
+      drainSimulationToFile.__typename == 'PaymentError' ||
+      drainSimulationToFile.__typename == 'CapacityError'
+    ) {
+      return Err([drainSimulationToFile.message])
+    } else {
+      throw new Error(
+        `Unhandled GraphQL error: ${JSON.stringify(drainSimulationToFile)}`
+      )
+    }
   }
 
   async waitForDrainedSink(
@@ -195,10 +349,25 @@ export class Rngo {
     sinkId: string
   ): Promise<boolean> {
     const result = await rngoUtil.poll(async () => {
-      const sinks = await this.client.getSimulationSinkStates(simulationId)
+      const { simulation } = await this.gqlClient.request(
+        gql(/* GraphQL */ `
+          query getSimulation($id: String!) {
+            simulation(id: $id) {
+              id
+              sinks {
+                id
+                completedAt
+              }
+            }
+          }
+        `),
+        {
+          id: simulationId,
+        }
+      )
 
-      if (sinks) {
-        const sink = sinks.find((sink) => sink.id === sinkId)
+      if (simulation?.sinks) {
+        const sink = simulation?.sinks.find((sink) => sink.id === sinkId)
 
         if (sink?.completedAt) {
           return true
@@ -257,4 +426,9 @@ export class Rngo {
       cwd: directory,
     })
   }
+}
+function JSONbig(arg0: {
+  useNativeBigInt: boolean
+}): import('graphql-request/build/esm/types.dom').JsonSerializer | undefined {
+  throw new Error('Function not implemented.')
 }

@@ -54,7 +54,7 @@ export default class Run extends Command {
 
     const runSpinner = ora('Running simulation').start()
 
-    const createSimulationResult = await rngo.client.createSimulation(
+    const createSimulationResult = await rngo.createSimulation(
       branchId!,
       parsedSeed
     )
@@ -62,7 +62,7 @@ export default class Run extends Command {
     let simulationId
 
     if (createSimulationResult.ok) {
-      simulationId = createSimulationResult.val.id
+      simulationId = createSimulationResult.val
     } else {
       runSpinner.fail()
       errorAndExit(
@@ -72,7 +72,7 @@ export default class Run extends Command {
       )
     }
 
-    const drainResult = await rngo.client.drainSimulationToFile(simulationId)
+    const drainResult = await rngo.drainSimulationToFile(simulationId)
 
     let sink
 
