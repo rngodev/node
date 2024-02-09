@@ -11,12 +11,14 @@ async function validRngo() {
   return initResult.unwrap()
 }
 
-test('Rngo.init defaults', async () => {
-  const initResult = await Rngo.init({ apiToken: jwt })
-  expect(initResult.ok).toBe(true)
+describe('Rngo.init', () => {
+  test('defaults', async () => {
+    const initResult = await Rngo.init({ apiToken: jwt })
+    expect(initResult.ok).toBe(true)
 
-  const rngo = initResult.unwrap()
-  expect(rngo.apiUrl.toString()).toBe('https://api.rngo.dev/')
+    const rngo = initResult.unwrap()
+    expect(rngo.apiUrl.toString()).toBe('https://api.rngo.dev/')
+  })
 })
 
 describe('Rngo#upsertConfigFile', () => {

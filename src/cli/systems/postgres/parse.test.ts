@@ -3,7 +3,7 @@ import { TableInfo } from './query'
 import { PostgresDataType } from './types'
 
 describe('buildParameters', () => {
-  it('should return success if required fields are supplied', () => {
+  test('success', () => {
     const result = buildParameters({
       env: {},
       namespaceName: 'ns',
@@ -27,7 +27,7 @@ describe('buildParameters', () => {
 })
 
 describe('tableInfoToStreams', () => {
-  it('should make a stream property for bigserials', () => {
+  test('bigserial', () => {
     const tableInfo: TableInfo[] = [
       {
         table: 'users',
