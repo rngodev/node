@@ -41,7 +41,7 @@ export default class Run extends Command {
     const syncSpinner = ora('Syncing config').start()
 
     let branchId: string | undefined = undefined
-    const syncConfigResult = await rngo.syncConfig()
+    const syncConfigResult = await rngo.upsertConfigFile()
 
     if (syncConfigResult.ok) {
       syncSpinner.succeed()

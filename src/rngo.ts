@@ -217,20 +217,18 @@ export class Rngo {
   apiUrl: URL
   gqlClient: GraphQLClient
 
-  constructor(options: ParsedRngoOptions, gqlClient?: GraphQLClient) {
+  constructor(options: ParsedRngoOptions) {
     this.config = options.config
     this.configPath = options.configPath
     this.directory = options.directory
     this.apiUrl = options.apiUrl
-    this.gqlClient =
-      gqlClient ||
-      new GraphQLClient(`${options.apiUrl}/graphql`, {
-        jsonSerializer: JSONbig({ useNativeBigInt: true }),
-        headers: {
-          authorization: `Bearer ${options.apiToken.token}`,
-          'auth-provider': 'clerk',
-        },
-      })
+    this.gqlClient = new GraphQLClient(`${options.apiUrl}/graphql`, {
+      jsonSerializer: JSONbig({ useNativeBigInt: true }),
+      headers: {
+        authorization: `Bearer ${options.apiToken.token}`,
+        'auth-provider': 'clerk',
+      },
+    })
   }
 
   get lastSimulationDir() {
@@ -245,7 +243,7 @@ export class Rngo {
     return path.join(this.simulationsDir, simulationId)
   }
 
-  async syncConfig(): Promise<Result<ConfigFile, ConfigFileError[]>> {
+  async upsertConfigFile(): Promise<Result<ConfigFile, ConfigFileError[]>> {
     let gqlScm: UpsertConfigFileScm | undefined = undefined
     const scmRepo = await rngoUtil.getScmRepo()
 
