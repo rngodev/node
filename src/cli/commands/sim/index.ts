@@ -77,15 +77,8 @@ export default class Run extends Command {
     let sink
 
     if (drainResult.ok) {
+      runSpinner.succeed()
       sink = drainResult.val
-      const success = await rngo.waitForDrainedSink(simulationId, sink.id)
-
-      if (success) {
-        runSpinner.succeed()
-      } else {
-        runSpinner.fail()
-        errorAndExit(this, 'SimTimedOut', 'Simulation timed out')
-      }
     } else {
       runSpinner.fail()
       errorAndExit(

@@ -287,10 +287,33 @@ export class Rngo {
     )
 
     if (upsertConfigFile.__typename == 'ConfigFile') {
-      return Ok({
-        id: upsertConfigFile.id,
-        branchId: upsertConfigFile.branch.id,
+      const result = await rngoUtil.poll(async () => {
+        const { configFile } = await this.gqlClient.request(
+          gql(/* GraphQL */ `
+            query pollConfigFile($id: String!) {
+              configFile(id: $id) {
+                processingCompletedAt
+              }
+            }
+          `),
+          {
+            id: upsertConfigFile.id,
+          }
+        )
+
+        if (configFile?.processingCompletedAt) {
+          return true
+        }
       })
+
+      if (result) {
+        return Ok({
+          id: upsertConfigFile.id,
+          branchId: upsertConfigFile.branch.id,
+        })
+      } else {
+        throw new Error(`Config file processing timed out`)
+      }
     } else {
       return Err(upsertConfigFile.config || [])
     }
@@ -331,9 +354,9 @@ export class Rngo {
 
     if (createSimulation.__typename == 'Simulation') {
       const result = await rngoUtil.poll(async () => {
-        const simulation = await this.gqlClient.request(
+        const { simulation } = await this.gqlClient.request(
           gql(/* GraphQL */ `
-            query simulation($id: String!) {
+            query pollSimulation($id: String!) {
               simulation(id: $id) {
                 processingCompletedAt
               }
@@ -344,7 +367,7 @@ export class Rngo {
           }
         )
 
-        if (simulation.simulation?.processingCompletedAt) {
+        if (simulation?.processingCompletedAt) {
           return true
         }
       })
@@ -398,12 +421,45 @@ export class Rngo {
     )
 
     if (drainSimulationToFile.__typename == 'FileSink') {
-      return Ok({
-        id: drainSimulationToFile.id,
-        simulationId: simulationId,
-        importScriptUrl: drainSimulationToFile.importScriptUrl || undefined,
-        archives: drainSimulationToFile.archives,
+      const result = await rngoUtil.poll(async () => {
+        const { simulation } = await this.gqlClient.request(
+          gql(/* GraphQL */ `
+            query pollSimulationSinks($id: String!) {
+              simulation(id: $id) {
+                id
+                sinks {
+                  id
+                  completedAt
+                }
+              }
+            }
+          `),
+          {
+            id: simulationId,
+          }
+        )
+
+        if (simulation?.sinks) {
+          const sink = simulation?.sinks.find(
+            (sink) => sink.id === drainSimulationToFile.id
+          )
+
+          if (sink?.completedAt) {
+            return true
+          }
+        }
       })
+
+      if (result) {
+        return Ok({
+          id: drainSimulationToFile.id,
+          simulationId: simulationId,
+          importScriptUrl: drainSimulationToFile.importScriptUrl || undefined,
+          archives: drainSimulationToFile.archives,
+        })
+      } else {
+        throw new Error(`Drain simulation to file timed out`)
+      }
     } else if (
       drainSimulationToFile.__typename ==
         'DrainSimulationToFileValidationError' &&
@@ -420,40 +476,6 @@ export class Rngo {
         `Unhandled GraphQL error: ${JSON.stringify(drainSimulationToFile)}`
       )
     }
-  }
-
-  async waitForDrainedSink(
-    simulationId: string,
-    sinkId: string
-  ): Promise<boolean> {
-    const result = await rngoUtil.poll(async () => {
-      const { simulation } = await this.gqlClient.request(
-        gql(/* GraphQL */ `
-          query getSimulation($id: String!) {
-            simulation(id: $id) {
-              id
-              sinks {
-                id
-                completedAt
-              }
-            }
-          }
-        `),
-        {
-          id: simulationId,
-        }
-      )
-
-      if (simulation?.sinks) {
-        const sink = simulation?.sinks.find((sink) => sink.id === sinkId)
-
-        if (sink?.completedAt) {
-          return true
-        }
-      }
-    })
-
-    return result || false
   }
 
   async downloadFileSink(

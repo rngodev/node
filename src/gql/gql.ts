@@ -16,10 +16,11 @@ const documents = {
     "\n          mutation authCli {\n            authCli {\n              cliCode\n              userCode\n              verificationUrl\n            }\n          }\n        ": types.AuthCliDocument,
     "\n                query getVerifiedCliAuth($cliCode: String!) {\n                  verifiedCliAuth(cliCode: $cliCode) {\n                    token\n                  }\n                }\n              ": types.GetVerifiedCliAuthDocument,
     "\n        mutation upsertConfigFile($input: UpsertConfigFile!) {\n          upsertConfigFile(input: $input) {\n            __typename\n            ... on ConfigFile {\n              id\n              branch {\n                id\n              }\n            }\n            ... on UpsertConfigFileFailure {\n              config {\n                path\n                message\n              }\n            }\n          }\n        }\n      ": types.UpsertConfigFileDocument,
+    "\n            query pollConfigFile($id: String!) {\n              configFile(id: $id) {\n                processingCompletedAt\n              }\n            }\n          ": types.PollConfigFileDocument,
     "\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            __typename\n            ... on Simulation {\n              id\n            }\n            ... on CreateSimulationFailure {\n              branchId {\n                message\n              }\n            }\n          }\n        }\n      ": types.CreateSimulationDocument,
-    "\n            query simulation($id: String!) {\n              simulation(id: $id) {\n                processingCompletedAt\n              }\n            }\n          ": types.SimulationDocument,
+    "\n            query pollSimulation($id: String!) {\n              simulation(id: $id) {\n                processingCompletedAt\n              }\n            }\n          ": types.PollSimulationDocument,
     "\n        mutation drainSimulationToFile($input: DrainSimulationToFile!) {\n          drainSimulationToFile(input: $input) {\n            __typename\n            ... on FileSink {\n              id\n              importScriptUrl\n              archives {\n                url\n              }\n            }\n            ... on DrainSimulationToFileValidationError {\n              simulationId {\n                message\n              }\n            }\n            ... on Error {\n              message\n            }\n          }\n        }\n      ": types.DrainSimulationToFileDocument,
-    "\n          query getSimulation($id: String!) {\n            simulation(id: $id) {\n              id\n              sinks {\n                id\n                completedAt\n              }\n            }\n          }\n        ": types.GetSimulationDocument,
+    "\n            query pollSimulationSinks($id: String!) {\n              simulation(id: $id) {\n                id\n                sinks {\n                  id\n                  completedAt\n                }\n              }\n            }\n          ": types.PollSimulationSinksDocument,
 };
 
 /**
@@ -51,11 +52,15 @@ export function gql(source: "\n        mutation upsertConfigFile($input: UpsertC
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function gql(source: "\n            query pollConfigFile($id: String!) {\n              configFile(id: $id) {\n                processingCompletedAt\n              }\n            }\n          "): (typeof documents)["\n            query pollConfigFile($id: String!) {\n              configFile(id: $id) {\n                processingCompletedAt\n              }\n            }\n          "];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function gql(source: "\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            __typename\n            ... on Simulation {\n              id\n            }\n            ... on CreateSimulationFailure {\n              branchId {\n                message\n              }\n            }\n          }\n        }\n      "): (typeof documents)["\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            __typename\n            ... on Simulation {\n              id\n            }\n            ... on CreateSimulationFailure {\n              branchId {\n                message\n              }\n            }\n          }\n        }\n      "];
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function gql(source: "\n            query simulation($id: String!) {\n              simulation(id: $id) {\n                processingCompletedAt\n              }\n            }\n          "): (typeof documents)["\n            query simulation($id: String!) {\n              simulation(id: $id) {\n                processingCompletedAt\n              }\n            }\n          "];
+export function gql(source: "\n            query pollSimulation($id: String!) {\n              simulation(id: $id) {\n                processingCompletedAt\n              }\n            }\n          "): (typeof documents)["\n            query pollSimulation($id: String!) {\n              simulation(id: $id) {\n                processingCompletedAt\n              }\n            }\n          "];
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -63,7 +68,7 @@ export function gql(source: "\n        mutation drainSimulationToFile($input: Dr
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function gql(source: "\n          query getSimulation($id: String!) {\n            simulation(id: $id) {\n              id\n              sinks {\n                id\n                completedAt\n              }\n            }\n          }\n        "): (typeof documents)["\n          query getSimulation($id: String!) {\n            simulation(id: $id) {\n              id\n              sinks {\n                id\n                completedAt\n              }\n            }\n          }\n        "];
+export function gql(source: "\n            query pollSimulationSinks($id: String!) {\n              simulation(id: $id) {\n                id\n                sinks {\n                  id\n                  completedAt\n                }\n              }\n            }\n          "): (typeof documents)["\n            query pollSimulationSinks($id: String!) {\n              simulation(id: $id) {\n                id\n                sinks {\n                  id\n                  completedAt\n                }\n              }\n            }\n          "];
 
 export function gql(source: string) {
   return (documents as any)[source] ?? {};
