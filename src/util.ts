@@ -1,3 +1,4 @@
+import jwt, { type JwtPayload } from 'jsonwebtoken'
 import fetch from 'node-fetch'
 import { createWriteStream, promises as nodeFs } from 'node:fs'
 import nodePath from 'node:path'
@@ -26,6 +27,9 @@ export type InitError =
       path: (string | number)[]
       message: string
     }
+
+export type ValidJwtToken = { token: string; expirationDate: Date }
+export type JwtTokenError = 'missing' | 'expired' | 'malformed'
 
 export function resolveApiUrl(
   apiUrl: string | undefined
@@ -87,6 +91,28 @@ export function filePathForUrl(url: string, directory: string) {
     dir: nodePath.join(directory, nodePath.dirname(relativeUrlPath)),
     base: nodePath.basename(relativeUrlPath),
   })
+}
+
+export function parseJwtToken(
+  token: string | undefined
+): Result<ValidJwtToken, JwtTokenError> {
+  if (token) {
+    const decodedJwt = jwt.decode(token) as JwtPayload
+
+    if (decodedJwt.exp) {
+      const expirationDate = new Date(decodedJwt.exp * 1000)
+
+      if (expirationDate > new Date()) {
+        return Ok({ token: token, expirationDate })
+      } else {
+        return Err('expired')
+      }
+    } else {
+      return Err('malformed')
+    }
+  } else {
+    return Err('missing')
+  }
 }
 
 export async function poll<T>(thunk: () => Promise<T>): Promise<T | undefined> {

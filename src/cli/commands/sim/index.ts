@@ -41,7 +41,7 @@ export default class Run extends Command {
     const syncSpinner = ora('Syncing config').start()
 
     let branchId: string | undefined = undefined
-    const syncConfigResult = await rngo.syncConfig()
+    const syncConfigResult = await rngo.upsertConfigFile()
 
     if (syncConfigResult.ok) {
       syncSpinner.succeed()
@@ -54,33 +54,37 @@ export default class Run extends Command {
 
     const runSpinner = ora('Running simulation').start()
 
-    const runSimulationResult = await rngo.client.runSimulation(
+    const createSimulationResult = await rngo.createSimulation(
       branchId!,
       parsedSeed
     )
 
     let simulationId
-    let sink
 
-    if (runSimulationResult.ok) {
-      simulationId = runSimulationResult.val.id
-      sink = await rngo.awaitSimulationSink(
-        runSimulationResult.val.id,
-        runSimulationResult.val.defaultFileSinkId
-      )
-
-      if (!sink) {
-        runSpinner.fail()
-        errorAndExit(this, 'SimTimedOut', 'Simulation timed out')
-      } else {
-        runSpinner.succeed()
-      }
+    if (createSimulationResult.ok) {
+      simulationId = createSimulationResult.val
     } else {
-      syncSpinner.fail()
+      runSpinner.fail()
       errorAndExit(
         this,
         'UnhandledError',
-        `Unhandled error: ${runSimulationResult.val}`
+        `Unhandled error: ${createSimulationResult.val}`
+      )
+    }
+
+    const drainResult = await rngo.drainSimulationToFile(simulationId)
+
+    let sink
+
+    if (drainResult.ok) {
+      runSpinner.succeed()
+      sink = drainResult.val
+    } else {
+      runSpinner.fail()
+      errorAndExit(
+        this,
+        'UnhandledError',
+        `Unhandled error: ${drainResult.val}`
       )
     }
 

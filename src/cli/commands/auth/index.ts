@@ -5,7 +5,9 @@ import inquirer from 'inquirer'
 import open from 'open'
 import ora from 'ora'
 
-import { DeviceAuth, parseToken } from '@main'
+import { Rngo } from '@main'
+
+import { parseJwtToken } from '@src/util'
 
 import {
   errorAndExit,
@@ -18,7 +20,7 @@ export default class Login extends Command {
 
   async run(): Promise<void> {
     const globalConfig = await getGlobalConfig()
-    const parsedToken = parseToken(globalConfig.token)
+    const parsedToken = parseJwtToken(globalConfig.token)
 
     if (parsedToken.ok) {
       this.log(
@@ -34,7 +36,7 @@ export default class Login extends Command {
       `To log into the rngo CLI, you'll need to log into rngo.dev and paste in a one-time auth code.\n`
     )
 
-    const deviceAuthResult = await DeviceAuth.init()
+    const deviceAuthResult = await Rngo.authDevice()
 
     const deviceAuth = deviceAuthResult
       .mapErr((error) => {
