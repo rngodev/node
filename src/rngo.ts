@@ -243,6 +243,14 @@ export class Rngo {
     return path.join(this.simulationsDir, simulationId)
   }
 
+  /**
+   * Idempotently inserts and / or update any systems, scenarios or streams
+   * specified in the local config file to the rngo API. This should be called
+   * after changes to the local config file to ensure that future simulations
+   * reference the latest state.
+   *
+   * @returns The ID of the created config file resource.
+   */
   async upsertConfigFile(): Promise<Result<ConfigFile, ConfigFileError[]>> {
     let gqlScm: UpsertConfigFileScm | undefined = undefined
     const scmRepo = await rngoUtil.getScmRepo()
