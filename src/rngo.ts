@@ -330,7 +330,30 @@ export class Rngo {
     )
 
     if (createSimulation.__typename == 'Simulation') {
-      return Ok(createSimulation.id)
+      const result = await rngoUtil.poll(async () => {
+        const simulation = await this.gqlClient.request(
+          gql(/* GraphQL */ `
+            query simulation($id: String!) {
+              simulation(id: $id) {
+                processingCompletedAt
+              }
+            }
+          `),
+          {
+            id: createSimulation.id,
+          }
+        )
+
+        if (simulation.simulation?.processingCompletedAt) {
+          return true
+        }
+      })
+
+      if (result) {
+        return Ok(createSimulation.id)
+      } else {
+        throw new Error(`Simulation processing timed out`)
+      }
     } else if (createSimulation.branchId) {
       // return Err(createSimulation.branchId.map((e) => e.message))))
       return Err(['Unknown branchId'])
