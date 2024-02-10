@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 'lts/hydrogen'
+      - run: yarn install
       - name: tsdoc
         uses: erikyo/tsdoc-action@v1
         with:
