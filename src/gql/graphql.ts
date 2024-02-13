@@ -66,19 +66,6 @@ export type CapacityError = Error & {
   message: Scalars['String'];
 };
 
-export type CliAuth = {
-  __typename?: 'CliAuth';
-  cliCode: Scalars['String'];
-  expiresAt: Scalars['DateTime'];
-  userCode: Scalars['String'];
-  verificationUrl: Scalars['String'];
-};
-
-export type CliAuthVerification = {
-  __typename?: 'CliAuthVerification';
-  id: Scalars['ID'];
-};
-
 export type ConfigFile = {
   __typename?: 'ConfigFile';
   branch: Branch;
@@ -140,6 +127,19 @@ export type CreateSimulationFailure = {
 
 export type CreateSimulationResult = CreateSimulationFailure | Simulation;
 
+export type DeviceAuth = {
+  __typename?: 'DeviceAuth';
+  deviceCode: Scalars['String'];
+  expiresAt: Scalars['DateTime'];
+  userCode: Scalars['String'];
+  verificationUrl: Scalars['String'];
+};
+
+export type DeviceAuthVerification = {
+  __typename?: 'DeviceAuthVerification';
+  id: Scalars['ID'];
+};
+
 export type DrainSimulationToFile = {
   simulationId: Scalars['ID'];
 };
@@ -170,11 +170,11 @@ export type JsonError = {
 
 export type Mutation = {
   __typename?: 'Mutation';
-  authCli: CliAuth;
+  authDevice: DeviceAuth;
   createSimulation: CreateSimulationResult;
   drainSimulationToFile: DrainSimulationToFileResult;
   upsertConfigFile: UpsertConfigFileResult;
-  verifyCliAuth: VerifyCliAuthResult;
+  verifyDeviceAuth: VerifyDeviceAuthResult;
 };
 
 
@@ -193,8 +193,8 @@ export type MutationUpsertConfigFileArgs = {
 };
 
 
-export type MutationVerifyCliAuthArgs = {
-  input: VerifyCliAuth;
+export type MutationVerifyDeviceAuthArgs = {
+  input: VerifyDeviceAuth;
 };
 
 export type Namespace = {
@@ -270,7 +270,7 @@ export type Query = {
   /** Fetches the Redwood root schema. */
   redwood?: Maybe<Redwood>;
   simulation?: Maybe<Simulation>;
-  verifiedCliAuth?: Maybe<VerifiedCliAuth>;
+  verifiedDeviceAuth?: Maybe<VerifiedDeviceAuth>;
 };
 
 
@@ -293,8 +293,8 @@ export type QuerySimulationArgs = {
 
 
 /** About the Redwood queries. */
-export type QueryVerifiedCliAuthArgs = {
-  cliCode: Scalars['String'];
+export type QueryVerifiedDeviceAuthArgs = {
+  deviceCode: Scalars['String'];
 };
 
 /**
@@ -454,35 +454,35 @@ export type User = {
   name: Scalars['String'];
 };
 
-export type VerifiedCliAuth = {
-  __typename?: 'VerifiedCliAuth';
+export type VerifiedDeviceAuth = {
+  __typename?: 'VerifiedDeviceAuth';
   token: Scalars['String'];
 };
 
-export type VerifyCliAuth = {
-  cliAuthId: Scalars['String'];
+export type VerifyDeviceAuth = {
+  deviceAuthId: Scalars['String'];
   userCode: Scalars['String'];
 };
 
-export type VerifyCliAuthFailure = {
-  __typename?: 'VerifyCliAuthFailure';
-  cliAuthId?: Maybe<Array<Error>>;
+export type VerifyDeviceAuthFailure = {
+  __typename?: 'VerifyDeviceAuthFailure';
+  deviceAuthId?: Maybe<Array<Error>>;
   userCode?: Maybe<Array<Error>>;
 };
 
-export type VerifyCliAuthResult = CliAuthVerification | VerifyCliAuthFailure;
+export type VerifyDeviceAuthResult = DeviceAuthVerification | VerifyDeviceAuthFailure;
 
-export type AuthCliMutationVariables = Exact<{ [key: string]: never; }>;
+export type AuthDeviceMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type AuthCliMutation = { __typename?: 'Mutation', authCli: { __typename?: 'CliAuth', cliCode: string, userCode: string, verificationUrl: string } };
+export type AuthDeviceMutation = { __typename?: 'Mutation', authDevice: { __typename?: 'DeviceAuth', deviceCode: string, userCode: string, verificationUrl: string } };
 
-export type GetVerifiedCliAuthQueryVariables = Exact<{
-  cliCode: Scalars['String'];
+export type GetVerifiedDeviceAuthQueryVariables = Exact<{
+  deviceCode: Scalars['String'];
 }>;
 
 
-export type GetVerifiedCliAuthQuery = { __typename?: 'Query', verifiedCliAuth?: { __typename?: 'VerifiedCliAuth', token: string } | null };
+export type GetVerifiedDeviceAuthQuery = { __typename?: 'Query', verifiedDeviceAuth?: { __typename?: 'VerifiedDeviceAuth', token: string } | null };
 
 export type UpsertConfigFileMutationVariables = Exact<{
   input: UpsertConfigFile;
@@ -527,8 +527,8 @@ export type PollSimulationSinksQueryVariables = Exact<{
 export type PollSimulationSinksQuery = { __typename?: 'Query', simulation?: { __typename?: 'Simulation', id: string, sinks: Array<{ __typename?: 'FileSink', id: string, completedAt?: any | null }> } | null };
 
 
-export const AuthCliDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"authCli"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"authCli"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cliCode"}},{"kind":"Field","name":{"kind":"Name","value":"userCode"}},{"kind":"Field","name":{"kind":"Name","value":"verificationUrl"}}]}}]}}]} as unknown as DocumentNode<AuthCliMutation, AuthCliMutationVariables>;
-export const GetVerifiedCliAuthDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getVerifiedCliAuth"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cliCode"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"verifiedCliAuth"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"cliCode"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cliCode"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}}]}}]}}]} as unknown as DocumentNode<GetVerifiedCliAuthQuery, GetVerifiedCliAuthQueryVariables>;
+export const AuthDeviceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"authDevice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"authDevice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deviceCode"}},{"kind":"Field","name":{"kind":"Name","value":"userCode"}},{"kind":"Field","name":{"kind":"Name","value":"verificationUrl"}}]}}]}}]} as unknown as DocumentNode<AuthDeviceMutation, AuthDeviceMutationVariables>;
+export const GetVerifiedDeviceAuthDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getVerifiedDeviceAuth"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deviceCode"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"verifiedDeviceAuth"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deviceCode"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deviceCode"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}}]}}]}}]} as unknown as DocumentNode<GetVerifiedDeviceAuthQuery, GetVerifiedDeviceAuthQueryVariables>;
 export const UpsertConfigFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"upsertConfigFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpsertConfigFile"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upsertConfigFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ConfigFile"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"branch"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UpsertConfigFileFailure"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"config"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]}}]}}]} as unknown as DocumentNode<UpsertConfigFileMutation, UpsertConfigFileMutationVariables>;
 export const PollConfigFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"pollConfigFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"configFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"processingCompletedAt"}}]}}]}}]} as unknown as DocumentNode<PollConfigFileQuery, PollConfigFileQueryVariables>;
 export const CreateSimulationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createSimulation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateSimulation"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createSimulation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Simulation"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CreateSimulationFailure"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"branchId"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]}}]}}]} as unknown as DocumentNode<CreateSimulationMutation, CreateSimulationMutationVariables>;
