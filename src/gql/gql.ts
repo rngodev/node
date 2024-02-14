@@ -13,8 +13,8 @@ import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/
  * Therefore it is highly recommended to use the babel or swc plugin for production.
  */
 const documents = {
-    "\n          mutation authCli {\n            authCli {\n              cliCode\n              userCode\n              verificationUrl\n            }\n          }\n        ": types.AuthCliDocument,
-    "\n                query getVerifiedCliAuth($cliCode: String!) {\n                  verifiedCliAuth(cliCode: $cliCode) {\n                    token\n                  }\n                }\n              ": types.GetVerifiedCliAuthDocument,
+    "\n          mutation authDevice {\n            authDevice {\n              deviceCode\n              userCode\n              verificationUrl\n            }\n          }\n        ": types.AuthDeviceDocument,
+    "\n                query getVerifiedDeviceAuth($deviceCode: String!) {\n                  verifiedDeviceAuth(deviceCode: $deviceCode) {\n                    token\n                  }\n                }\n              ": types.GetVerifiedDeviceAuthDocument,
     "\n        mutation upsertConfigFile($input: UpsertConfigFile!) {\n          upsertConfigFile(input: $input) {\n            __typename\n            ... on ConfigFile {\n              id\n              branch {\n                id\n              }\n            }\n            ... on UpsertConfigFileFailure {\n              config {\n                path\n                message\n              }\n            }\n          }\n        }\n      ": types.UpsertConfigFileDocument,
     "\n            query pollConfigFile($id: String!) {\n              configFile(id: $id) {\n                processingCompletedAt\n              }\n            }\n          ": types.PollConfigFileDocument,
     "\n        mutation createSimulation($input: CreateSimulation!) {\n          createSimulation(input: $input) {\n            __typename\n            ... on Simulation {\n              id\n            }\n            ... on CreateSimulationFailure {\n              branchId {\n                message\n              }\n            }\n          }\n        }\n      ": types.CreateSimulationDocument,
@@ -40,11 +40,11 @@ export function gql(source: string): unknown;
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function gql(source: "\n          mutation authCli {\n            authCli {\n              cliCode\n              userCode\n              verificationUrl\n            }\n          }\n        "): (typeof documents)["\n          mutation authCli {\n            authCli {\n              cliCode\n              userCode\n              verificationUrl\n            }\n          }\n        "];
+export function gql(source: "\n          mutation authDevice {\n            authDevice {\n              deviceCode\n              userCode\n              verificationUrl\n            }\n          }\n        "): (typeof documents)["\n          mutation authDevice {\n            authDevice {\n              deviceCode\n              userCode\n              verificationUrl\n            }\n          }\n        "];
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function gql(source: "\n                query getVerifiedCliAuth($cliCode: String!) {\n                  verifiedCliAuth(cliCode: $cliCode) {\n                    token\n                  }\n                }\n              "): (typeof documents)["\n                query getVerifiedCliAuth($cliCode: String!) {\n                  verifiedCliAuth(cliCode: $cliCode) {\n                    token\n                  }\n                }\n              "];
+export function gql(source: "\n                query getVerifiedDeviceAuth($deviceCode: String!) {\n                  verifiedDeviceAuth(deviceCode: $deviceCode) {\n                    token\n                  }\n                }\n              "): (typeof documents)["\n                query getVerifiedDeviceAuth($deviceCode: String!) {\n                  verifiedDeviceAuth(deviceCode: $deviceCode) {\n                    token\n                  }\n                }\n              "];
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

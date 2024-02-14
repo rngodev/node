@@ -61,11 +61,11 @@ export class Rngo {
 
     if (apiUrlResult.ok) {
       const gqlClient = new GraphQLClient(apiUrlResult.val.toString())
-      const { authCli } = await gqlClient.request(
+      const { authDevice } = await gqlClient.request(
         gql(/* GraphQL */ `
-          mutation authCli {
-            authCli {
-              cliCode
+          mutation authDevice {
+            authDevice {
+              deviceCode
               userCode
               verificationUrl
             }
@@ -74,24 +74,24 @@ export class Rngo {
       )
 
       return Ok({
-        userCode: authCli.userCode,
-        verificationUrl: authCli.verificationUrl,
+        userCode: authDevice.userCode,
+        verificationUrl: authDevice.verificationUrl,
         verify: async () => {
           const token = await rngoUtil.poll(async () => {
             const result = await gqlClient.request(
               gql(/* GraphQL */ `
-                query getVerifiedCliAuth($cliCode: String!) {
-                  verifiedCliAuth(cliCode: $cliCode) {
+                query getVerifiedDeviceAuth($deviceCode: String!) {
+                  verifiedDeviceAuth(deviceCode: $deviceCode) {
                     token
                   }
                 }
               `),
               {
-                cliCode: authCli.cliCode,
+                deviceCode: authDevice.deviceCode,
               }
             )
 
-            return result.verifiedCliAuth?.token
+            return result.verifiedDeviceAuth?.token
           })
 
           return token
