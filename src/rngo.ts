@@ -15,21 +15,21 @@ import { InitError, ValidJwtToken } from './util'
 
 const { Err, Ok } = TsResult
 
-const ConfigSchema = z.object({}).passthrough()
-export type Config = z.infer<typeof ConfigSchema>
+const ConfigFileSourceSchema = z.object({}).passthrough()
+export type ConfigFileSource = z.infer<typeof ConfigFileSourceSchema>
 
 export type RngoOptions = {
   apiToken: string
   apiUrl: string
-  configPath?: string
+  configFilePath?: string
   directory?: string
 }
 
 type ParsedRngoOptions = {
   apiToken: ValidJwtToken
   apiUrl: URL
-  config: Config
-  configPath: string
+  configFileSource: ConfigFileSource
+  configFilePath: string
   directory: string
 }
 
@@ -149,38 +149,42 @@ export class Rngo {
       })
     }
 
-    if (options.configPath && !rngoUtil.fileExists(options.configPath)) {
+    if (
+      options.configFilePath &&
+      !rngoUtil.fileExists(options.configFilePath)
+    ) {
       errors.push({
         code: 'invalidOption',
-        key: 'configPath',
-        message: `configPath '${options.configPath}' not found`,
+        key: 'configFilePath',
+        message: `configPath '${options.configFilePath}' not found`,
       })
     }
 
     let directory = options.directory || this.defaultDirectoryPath()
-    let configPath = options.configPath || this.defaultConfigFilePath(directory)
-    let config: Config
+    let configFilePath =
+      options.configFilePath || this.defaultConfigFilePath(directory)
+    let config: ConfigFileSource
 
-    if (await rngoUtil.fileExists(configPath)) {
-      const source = await rngoUtil.readFile(configPath)
+    if (await rngoUtil.fileExists(configFilePath)) {
+      const source = await rngoUtil.readFile(configFilePath)
       let yaml
 
       try {
         yaml = YAML.parse(source!, { intAsBigInt: true })
       } catch (error) {
-        const message = options.configPath
-          ? `Error parsing YAML at configPath '${options.configPath}': ${error}`
-          : `Error parsing YAML at default path '${options.configPath}': ${error}`
+        const message = options.configFilePath
+          ? `Error parsing YAML at configFilePath '${configFilePath}': ${error}`
+          : `Error parsing YAML at default config file path '${configFilePath}': ${error}`
 
         errors.push({
           code: 'invalidOption',
-          key: 'configPath',
+          key: 'configFilePath',
           message,
         })
       }
 
       if (yaml) {
-        const result = ConfigSchema.safeParse(yaml)
+        const result = ConfigFileSourceSchema.safeParse(yaml)
 
         if (result.success) {
           config = result.data
@@ -204,25 +208,25 @@ export class Rngo {
       new Rngo({
         apiToken: apiToken!,
         apiUrl: apiUrl!,
-        config: config!,
-        configPath,
+        configFileSource: config!,
+        configFilePath: configFilePath,
         directory,
       })
     )
   }
 
-  config: Config
-  configPath: string
+  configFileSource: ConfigFileSource
+  configFilePath: string
   directory: string
   apiUrl: URL
   gqlClient: GraphQLClient
 
   constructor(options: ParsedRngoOptions) {
-    this.config = options.config
-    this.configPath = options.configPath
+    this.configFileSource = options.configFileSource
+    this.configFilePath = options.configFilePath
     this.directory = options.directory
     this.apiUrl = options.apiUrl
-    this.gqlClient = new GraphQLClient(`${options.apiUrl}/graphql`, {
+    this.gqlClient = new GraphQLClient(options.apiUrl.toString(), {
       jsonSerializer: JSONbig({ useNativeBigInt: true }),
       headers: {
         authorization: `Bearer ${options.apiToken.token}`,
@@ -260,7 +264,7 @@ export class Rngo {
         repo: scmRepo.name,
         branch: scmRepo.branch,
         parentCommit: scmRepo.commitHash,
-        filepath: this.configPath,
+        filepath: this.configFilePath,
       }
     }
 
@@ -286,7 +290,7 @@ export class Rngo {
       `),
       {
         input: {
-          config: this.config,
+          source: this.configFileSource,
           scm: gqlScm,
         },
       }

@@ -68,7 +68,7 @@ export default class Infer extends Command {
           }
         })
 
-        updateConfig(rngo.configPath, commands)
+        updateConfig(rngo.configFilePath, commands)
       } else {
         this.log(`\nNo config updates needed`)
       }

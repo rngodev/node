@@ -59,7 +59,7 @@ export async function getRngoOrExit(
   if (globalConfig.token) {
     const result = await Rngo.init({
       apiToken: globalConfig.token,
-      configPath: flags?.config,
+      configFilePath: flags?.config,
     })
 
     if (result.ok) {
@@ -98,7 +98,7 @@ export async function getConfigOrExit(
 ): Promise<LocalConfig> {
   let errors: CliError[] = []
   let config: LocalConfig
-  const narrowResult = LocalConfigSchema.safeParse(rngo.config)
+  const narrowResult = LocalConfigSchema.safeParse(rngo.configFileSource)
 
   if (narrowResult.success) {
     config = narrowResult.data

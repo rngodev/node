@@ -14,6 +14,8 @@ export type Scalars = {
   Float: number;
   /** The `BigInt` scalar type represents non-fractional signed whole numeric values. */
   BigInt: any;
+  /** The `Byte` scalar type represents byte value as a Buffer */
+  Byte: any;
   /** A date string, such as 2007-12-03, compliant with the `full-date` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar. */
   Date: any;
   /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar. */
@@ -69,7 +71,6 @@ export type CapacityError = Error & {
 export type ConfigFile = {
   __typename?: 'ConfigFile';
   branch: Branch;
-  config: Scalars['JSONObject'];
   createdAt: Scalars['DateTime'];
   createdBy: User;
   id: Scalars['ID'];
@@ -78,6 +79,7 @@ export type ConfigFile = {
   processingCompletedAt?: Maybe<Scalars['DateTime']>;
   scenarios: ScenarioConnection;
   scm?: Maybe<ConfigFileScm>;
+  source: Scalars['JSONObject'];
   streams: StreamConnection;
   systems: SystemConnection;
 };
@@ -429,8 +431,8 @@ export type SystemParameter = {
 };
 
 export type UpsertConfigFile = {
-  config: Scalars['JSONObject'];
   scm?: InputMaybe<UpsertConfigFileScm>;
+  source: Scalars['JSONObject'];
 };
 
 export type UpsertConfigFileFailure = {
