@@ -86,3 +86,15 @@ For usage details, run:
 ```bash
 rngo --help
 ```
+
+## Contributing
+
+### Release
+
+To release, run
+
+```bash
+npm version <major|minor|patch>
+npm push --tags
+npm publish
+```
