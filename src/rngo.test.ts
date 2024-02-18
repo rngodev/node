@@ -17,7 +17,7 @@ describe('Rngo.init', () => {
     expect(initResult.ok).toBe(true)
 
     const rngo = initResult.unwrap()
-    expect(rngo.apiUrl.toString()).toBe('https://api.rngo.dev/')
+    expect(rngo.apiUrl.toString()).toBe('https://api.rngo.dev/graphql')
   })
 })
 

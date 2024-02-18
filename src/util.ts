@@ -34,7 +34,11 @@ export type JwtTokenError = 'missing' | 'expired' | 'malformed'
 export function resolveApiUrl(
   apiUrl: string | undefined
 ): Result<URL, InitError> {
-  const rawUrl = apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev'
+  let rawUrl = apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev'
+
+  if (!rawUrl.endsWith('/graphql')) {
+    rawUrl = rawUrl.endsWith('/') ? `${rawUrl}graphql` : `${rawUrl}/graphql`
+  }
 
   try {
     return Ok(new URL(rawUrl))
