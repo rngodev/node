@@ -91,10 +91,16 @@ rngo --help
 
 ### Release
 
-To release, run
+To release, run:
 
 ```bash
 npm version <major|minor|patch>
-npm push --tags
+git push
+git push --tags
+```
+
+Create the Github release  for that tag, and run:
+
+```bash
 npm publish
 ```
