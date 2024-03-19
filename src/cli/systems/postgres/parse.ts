@@ -118,7 +118,9 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
       if (column.is_bigserial) {
         return {
           type: 'integer',
-          dyn: `(streams.${table}.last.id ?? 0) + 1`,
+          rngo: {
+            value: `(stream.${table}.last.id ?? 0) + 1`,
+          },
         }
       } else {
         return {
@@ -128,8 +130,11 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
                 minimum: BigInt(-9223372036854775808n),
                 maximum: BigInt(9223372036854775807n),
               }
-            : {}),
-          dyn: ref ? `streams.${ref.table}.random.${ref.column}` : undefined,
+            : {
+                rngo: {
+                  value: `stream.${ref.table}.random.${ref.column}`,
+                },
+              }),
         }
       }
 
@@ -143,8 +148,11 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
         type: 'integer',
         ...(ref === null
           ? { minimum: BigInt(-2147483648), maximum: BigInt(2147483647) }
-          : {}),
-        dyn: ref ? `streams.${ref.table}.random.${ref.column}` : undefined,
+          : {
+              rngo: {
+                value: `stream.${ref.table}.random.${ref.column}`,
+              },
+            }),
       }
 
     case PostgresDataType.SMALLINT:
@@ -152,8 +160,11 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
         type: 'integer',
         ...(ref === null
           ? { minimum: BigInt(-32768), maximum: BigInt(32767) }
-          : {}),
-        dyn: ref ? `streams.${ref.table}.random.${ref.column}` : undefined,
+          : {
+              rngo: {
+                value: `stream.${ref.table}.random.${ref.column}`,
+              },
+            }),
       }
 
     case PostgresDataType.TEXT:
