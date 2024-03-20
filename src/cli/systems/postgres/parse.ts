@@ -119,7 +119,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
         return {
           type: 'integer',
           rngo: {
-            value: `(stream.${table}.last.id ?? 0) + 1`,
+            value: `(streams.${table}.last.id ?? 0) + 1`,
           },
         }
       } else {
@@ -132,7 +132,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
               }
             : {
                 rngo: {
-                  value: `stream.${ref.table}.random.${ref.column}`,
+                  value: `streams.${ref.table}.random.${ref.column}`,
                 },
               }),
         }
@@ -150,7 +150,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
           ? { minimum: BigInt(-2147483648), maximum: BigInt(2147483647) }
           : {
               rngo: {
-                value: `stream.${ref.table}.random.${ref.column}`,
+                value: `streams.${ref.table}.random.${ref.column}`,
               },
             }),
       }
@@ -162,7 +162,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
           ? { minimum: BigInt(-32768), maximum: BigInt(32767) }
           : {
               rngo: {
-                value: `stream.${ref.table}.random.${ref.column}`,
+                value: `streams.${ref.table}.random.${ref.column}`,
               },
             }),
       }
