@@ -55,7 +55,9 @@ describe('tableInfoToStreams', () => {
           properties: {
             id: {
               type: 'integer',
-              dyn: '(streams.users.last.id ?? 0) + 1',
+              rngo: {
+                value: '(streams.users.last.id ?? 0) + 1',
+              },
             },
           },
         },
