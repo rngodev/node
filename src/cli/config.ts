@@ -3,14 +3,18 @@ import { z } from 'zod'
 
 import * as rngoUtil from '@util'
 
+const RngoSchema = z.object({
+  value: z.string(),
+})
+
 const BooleanSchema = z.object({
   type: z.literal('boolean'),
-  dyn: z.string().optional(),
+  rngo: RngoSchema.optional(),
 })
 
 const IntegerSchema = z.object({
   type: z.literal('integer'),
-  dyn: z.string().optional(),
+  rngo: RngoSchema.optional(),
   minimum: z.bigint().optional(),
   maximum: z.bigint().optional(),
 })
@@ -19,7 +23,7 @@ const StringSchema = z.object({
   type: z.literal('string'),
   format: z.enum(['date-time']).optional(),
   enum: z.array(z.string()).optional(),
-  dyn: z.string().optional(),
+  rngo: RngoSchema.optional(),
 })
 
 export type JsonSchema =
@@ -94,7 +98,7 @@ export const LocalConfigSchema = z.object({
       })
     )
     .optional(),
-  streams: z.record(StreamSchema).optional(),
+  streams: z.record(StreamSchema).optional().nullable(),
 })
 
 export type LocalConfig = z.infer<typeof LocalConfigSchema>
@@ -183,7 +187,7 @@ export function applyConfigUpdateCommands(
       ]
       doc.setIn(path, command.property)
     } else if (command.type === 'addStream') {
-      if (!doc.has('streams')) {
+      if (!doc.has('streams') || !doc.get('streams')) {
         doc.set('streams', doc.createNode({}))
       }
 
