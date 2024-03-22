@@ -1,10 +1,6 @@
 # rngo for Node.js
 
-The official Node.js library for rngo. Includes:
-
-1. a lightweight rngo API client
-2. library code for downloading and importing simulation data
-3. a CLI wrapper
+The official Node.js library for rngo and a bundled CLI.
 
 ## Installation
 
@@ -20,8 +16,6 @@ or
 yarn add rngo
 ```
 
-To install the CLI globaly, run:
-
 ## Usage
 
 Start by initializing an instance of the `Rngo` class:
@@ -32,7 +26,7 @@ import { Rngo } from 'rngo';
 const rngo = Rngo.init();
 ```
 
-This expects the rngo API token to be available in the `RNGO_API_TOKEN` environment variable, and will otherwise use default configuration values.
+This expects the rngo API token to be available in the `RNGO_API_TOKEN` environment variable, and will use default configuration values.
 
 You can also pass in a configuration object:
 
@@ -43,7 +37,7 @@ const rngo = Rngo.init({
 })
 ```
 
-You can use the `Rngo` install to run simulations:
+You can use the `Rngo` instance to run simulations:
 
 ```javascript
 const simulation = await rngo.runSimulation()
@@ -57,7 +51,7 @@ await rngo.importSimulation(simulation.id)
 
 ## CLI
 
-You can use the CLI from a local project by running:
+The CLI can be used locally in a project by running:
 
 ```bash
 npx rngo
@@ -99,7 +93,7 @@ git push
 git push --tags
 ```
 
-Create the Github release  for that tag, and run:
+Create the Github release for that tag, and run:
 
 ```bash
 npm publish
