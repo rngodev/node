@@ -77,24 +77,20 @@ export class Rngo {
         userCode: authDevice.userCode,
         verificationUrl: authDevice.verificationUrl,
         verify: async () => {
-          const token = await rngoUtil.poll(async () => {
-            const result = await gqlClient.request(
-              gql(/* GraphQL */ `
-                query getVerifiedDeviceAuth($deviceCode: String!) {
-                  verifiedDeviceAuth(deviceCode: $deviceCode) {
-                    token
-                  }
+          const result = await gqlClient.request(
+            gql(/* GraphQL */ `
+              query getVerifiedDeviceAuth($deviceCode: String!) {
+                verifiedDeviceAuth(deviceCode: $deviceCode) {
+                  token
                 }
-              `),
-              {
-                deviceCode: authDevice.deviceCode,
               }
-            )
+            `),
+            {
+              deviceCode: authDevice.deviceCode,
+            }
+          )
 
-            return result.verifiedDeviceAuth?.token
-          })
-
-          return token
+          return result.verifiedDeviceAuth?.token
         },
       })
     } else {

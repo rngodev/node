@@ -1,4 +1,4 @@
-import { Command } from '@oclif/core'
+import { Command, ux } from '@oclif/core'
 import chalk from 'chalk'
 import clipboard from 'clipboardy'
 import inquirer from 'inquirer'
@@ -32,10 +32,6 @@ export default class Login extends Command {
       this.exit(1)
     }
 
-    this.log(
-      `To log into the rngo CLI, you'll need to log into rngo.dev and paste in a one-time auth code.\n`
-    )
-
     const deviceAuthResult = await Rngo.authDevice()
 
     const deviceAuth = deviceAuthResult
@@ -46,45 +42,37 @@ export default class Login extends Command {
       })
       .unwrap()
 
+    this.log(chalk.bold('To authenticate the rngo CLI:'))
+    this.log(` 1. Go to ${chalk.yellow.bold(deviceAuth.verificationUrl)}`)
+    this.log(` 2. Maybe sign in or sign up`)
+    this.log(
+      ` 3. Paste ${chalk.yellow.bold(deviceAuth.userCode)} into the form and submit`
+    )
+
+    this.log()
+
     const choice = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'yes',
-        message: `Copy the auth code to your clipboard and open the login page in your browser?`,
+        message: `Copy the code and open the URL?`,
         default: true,
       },
     ])
 
     if (choice.yes) {
       await clipboard.write(deviceAuth.userCode)
-    }
-
-    if (!choice.yes) {
-      this.log(
-        `\nCopy the auth code: ${chalk.yellow.bold(deviceAuth.userCode)}`
-      )
-      this.log(
-        `Open the login page in your browser: ${chalk.yellow.bold(
-          deviceAuth.verificationUrl
-        )}`
-      )
+      await open(deviceAuth.verificationUrl)
     }
 
     this.log()
 
-    const spinner = ora(choice.yes ? 'Logging in' : 'Awaiting login').start()
-
-    if (choice.yes) {
-      await open(deviceAuth.verificationUrl)
-    }
-
+    await ux.anykey('Press any key to complete authentication')
     const token = await deviceAuth.verify()
 
     if (token) {
       await setTokenInGlobalConfig(token)
-      spinner.succeed('Logged in')
     } else {
-      spinner.fail('Login failed')
       this.log()
       errorAndExit(this, 'LoginFailed', 'Login failed')
     }

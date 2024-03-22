@@ -229,6 +229,7 @@ export type Organization = {
   id: Scalars['ID'];
   name: Scalars['String'];
   namespaces: NamespaceConnection;
+  streams: StreamConnection;
 };
 
 
@@ -239,6 +240,12 @@ export type OrganizationBranchesArgs = {
 
 
 export type OrganizationNamespacesArgs = {
+  after?: InputMaybe<Scalars['String']>;
+  first?: InputMaybe<Scalars['Int']>;
+};
+
+
+export type OrganizationStreamsArgs = {
   after?: InputMaybe<Scalars['String']>;
   first?: InputMaybe<Scalars['Int']>;
 };
