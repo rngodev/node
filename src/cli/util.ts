@@ -71,7 +71,7 @@ export async function getRngoOrExit(
             command,
             'SessionExpected',
             `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
-              'rngo auth login'
+              'rngo auth'
             )}`
           )
         } else if (initError.code === 'invalidConfig') {
@@ -84,7 +84,7 @@ export async function getRngoOrExit(
       command,
       'SessionExpected',
       `To get started, first log into the rngo API by running: ${chalk.yellow.bold(
-        'rngo auth login'
+        'rngo auth'
       )}`
     )
   }
