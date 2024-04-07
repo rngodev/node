@@ -1,4 +1,5 @@
 import { Command, Flags } from '@oclif/core'
+import chalk from 'chalk'
 import ora from 'ora'
 import z from 'zod'
 
@@ -81,11 +82,34 @@ export default class Run extends Command {
       sink = drainResult.val
     } else {
       runSpinner.fail()
-      errorAndExit(
-        this,
-        'UnhandledError',
-        `Unhandled error: ${drainResult.val}`
-      )
+
+      const previewError = drainResult.val.find((error) => {
+        return error.type === 'InsufficientPreviewCredits'
+      })
+
+      if (previewError) {
+        if (previewError.type === 'InsufficientPreviewCredits') {
+          this.log()
+          this.log(
+            `You have ${chalk.bold(
+              previewError.available
+            )} preview credits available, but this simulation requires ${chalk.bold(
+              previewError.required
+            )}.
+To proceed, go to ${chalk.yellow.bold(
+              'https://rngo.dev/settings'
+            )} and subscribe to a plan.`
+          )
+        }
+
+        return this.exit()
+      } else {
+        errorAndExit(
+          this,
+          'UnhandledError',
+          `Unhandled error: ${drainResult.val}`
+        )
+      }
     }
 
     const dowloadSpinner = ora('Downloading data').start()

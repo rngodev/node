@@ -10,7 +10,10 @@ import { z } from 'zod'
 
 import * as rngoUtil from './util'
 import { gql } from './gql/gql'
-import { UpsertConfigFileScm } from './gql/graphql'
+import {
+  InsufficientPreviewCreditsError,
+  UpsertConfigFileScm,
+} from './gql/graphql'
 import { InitError, ValidJwtToken } from './util'
 
 const { Err, Ok } = TsResult
@@ -35,6 +38,18 @@ type ParsedRngoOptions = {
 
 export type ConfigFile = { id: string; branchId: string }
 export type ConfigFileError = { path: string[]; message: string }
+
+export type SimulationError =
+  | {
+      type: 'InsufficientPreviewCredits'
+      message: string
+      required: number
+      available: number
+    }
+  | {
+      type: 'SimulationError'
+      message: string
+    }
 
 export type NewSimulation = { id: string; defaultFileSinkId: string }
 
@@ -395,7 +410,7 @@ export class Rngo {
 
   async drainSimulationToFile(
     simulationId: string
-  ): Promise<Result<FileSink, string[]>> {
+  ): Promise<Result<FileSink, SimulationError[]>> {
     const { drainSimulationToFile } = await this.gqlClient.request(
       gql(/* GraphQL */ `
         mutation drainSimulationToFile($input: DrainSimulationToFile!) {
@@ -412,6 +427,11 @@ export class Rngo {
               simulationId {
                 message
               }
+            }
+            ... on InsufficientPreviewCreditsError {
+              message
+              available
+              required
             }
             ... on Error {
               message
@@ -467,16 +487,29 @@ export class Rngo {
         throw new Error(`Drain simulation to file timed out`)
       }
     } else if (
-      drainSimulationToFile.__typename ==
+      drainSimulationToFile.__typename ===
         'DrainSimulationToFileValidationError' &&
       drainSimulationToFile.simulationId
     ) {
-      return Err(drainSimulationToFile.simulationId.map((e) => e.message))
+      return Err(
+        drainSimulationToFile.simulationId.map((e) => {
+          return { type: 'SimulationError', message: e.message }
+        })
+      )
     } else if (
-      drainSimulationToFile.__typename == 'PaymentError' ||
-      drainSimulationToFile.__typename == 'CapacityError'
+      drainSimulationToFile.__typename === 'InsufficientPreviewCreditsError'
     ) {
-      return Err([drainSimulationToFile.message])
+      const error = drainSimulationToFile as InsufficientPreviewCreditsError
+      return Err([
+        {
+          type: 'InsufficientPreviewCredits',
+          ...error,
+        },
+      ])
+    } else if (drainSimulationToFile.__typename === 'CapacityError') {
+      return Err([
+        { type: 'SimulationError', message: drainSimulationToFile.message },
+      ])
     } else {
       throw new Error(
         `Unhandled GraphQL error: ${JSON.stringify(drainSimulationToFile)}`
