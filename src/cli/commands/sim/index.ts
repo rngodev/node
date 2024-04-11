@@ -4,6 +4,7 @@ import ora from 'ora'
 import z from 'zod'
 
 import { errorAndExit, getRngoOrExit, logUserErrors } from '@cli/util'
+import convert from 'convert-units'
 
 export default class Run extends Command {
   static summary = 'Run a new simulation and download the data.'
@@ -84,17 +85,25 @@ export default class Run extends Command {
       runSpinner.fail()
 
       const previewError = drainResult.val.find((error) => {
-        return error.type === 'InsufficientPreviewCredits'
+        return error.type === 'InsufficientPreviewVolume'
       })
 
       if (previewError) {
-        if (previewError.type === 'InsufficientPreviewCredits') {
+        if (previewError.type === 'InsufficientPreviewVolume') {
+          const available = convert(previewError.availableBytes)
+            .from('b')
+            .toBest()
+
+          const required = convert(previewError.requiredBytes)
+            .from('b')
+            .toBest()
+
           this.log()
           this.log(
             `You have ${chalk.bold(
-              previewError.available
-            )} preview credits available, but this simulation requires ${chalk.bold(
-              previewError.required
+              `${available.val} ${available.unit.toUpperCase()}`
+            )} of preview volume available, but this simulation has a volume of ${chalk.bold(
+              `${required.val} ${required.unit.toUpperCase()}`
             )}.
 To proceed, go to ${chalk.yellow.bold(
               'https://rngo.dev/settings'

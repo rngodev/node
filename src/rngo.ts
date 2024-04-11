@@ -11,7 +11,7 @@ import { z } from 'zod'
 import * as rngoUtil from './util'
 import { gql } from './gql/gql'
 import {
-  InsufficientPreviewCreditsError,
+  InsufficientPreviewVolumeError,
   UpsertConfigFileScm,
 } from './gql/graphql'
 import { InitError, ValidJwtToken } from './util'
@@ -41,10 +41,10 @@ export type ConfigFileError = { path: string[]; message: string }
 
 export type SimulationError =
   | {
-      type: 'InsufficientPreviewCredits'
+      type: 'InsufficientPreviewVolume'
       message: string
-      required: number
-      available: number
+      requiredBytes: number
+      availableBytes: number
     }
   | {
       type: 'SimulationError'
@@ -428,10 +428,10 @@ export class Rngo {
                 message
               }
             }
-            ... on InsufficientPreviewCreditsError {
+            ... on InsufficientPreviewVolumeError {
               message
-              available
-              required
+              availableBytes
+              requiredBytes
             }
             ... on Error {
               message
@@ -497,12 +497,12 @@ export class Rngo {
         })
       )
     } else if (
-      drainSimulationToFile.__typename === 'InsufficientPreviewCreditsError'
+      drainSimulationToFile.__typename === 'InsufficientPreviewVolumeError'
     ) {
-      const error = drainSimulationToFile as InsufficientPreviewCreditsError
+      const error = drainSimulationToFile as InsufficientPreviewVolumeError
       return Err([
         {
-          type: 'InsufficientPreviewCredits',
+          type: 'InsufficientPreviewVolume',
           ...error,
         },
       ])
