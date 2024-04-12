@@ -4,7 +4,6 @@ import ora from 'ora'
 import z from 'zod'
 
 import { errorAndExit, getRngoOrExit, logUserErrors } from '@cli/util'
-import convert from 'convert-units'
 
 export default class Run extends Command {
   static summary = 'Run a new simulation and download the data.'
@@ -90,20 +89,12 @@ export default class Run extends Command {
 
       if (previewError) {
         if (previewError.type === 'InsufficientPreviewVolume') {
-          const available = convert(previewError.availableBytes)
-            .from('b')
-            .toBest()
-
-          const required = convert(previewError.requiredBytes)
-            .from('b')
-            .toBest()
-
           this.log()
           this.log(
             `You have ${chalk.bold(
-              `${available.val} ${available.unit.toUpperCase()}`
+              `${previewError.availableMbs} ${previewError.availableMbs > 1 ? 'MBs' : 'MB'}`
             )} of preview volume available, but this simulation has a volume of ${chalk.bold(
-              `${required.val} ${required.unit.toUpperCase()}`
+              `${previewError.requiredMbs} ${previewError.requiredMbs > 1 ? 'MBs' : 'MB'}`
             )}.
 To proceed, go to ${chalk.yellow.bold(
               'https://rngo.dev/settings'

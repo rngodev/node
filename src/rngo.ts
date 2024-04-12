@@ -43,8 +43,8 @@ export type SimulationError =
   | {
       type: 'InsufficientPreviewVolume'
       message: string
-      requiredBytes: number
-      availableBytes: number
+      requiredMbs: number
+      availableMbs: number
     }
   | {
       type: 'SimulationError'
@@ -430,8 +430,8 @@ export class Rngo {
             }
             ... on InsufficientPreviewVolumeError {
               message
-              availableBytes
-              requiredBytes
+              availableMbs
+              requiredMbs
             }
             ... on Error {
               message
