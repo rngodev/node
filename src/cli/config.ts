@@ -83,6 +83,7 @@ const StreamSystemSchema = z.object({
 const StreamSchema = z.object({
   output: OutputSchema.optional(),
   systems: z.record(StreamSystemSchema).optional(),
+  rate: z.string().optional(),
   schema: JsonSchemaSchema,
 })
 
