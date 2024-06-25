@@ -296,6 +296,9 @@ export class Rngo {
                 message
               }
             }
+            ... on SynchronizationError {
+              message
+            }
           }
         }
       `),
@@ -335,8 +338,10 @@ export class Rngo {
       } else {
         throw new Error(`Config file processing timed out`)
       }
-    } else {
+    } else if (upsertConfigFile.__typename == 'UpsertConfigFileFailure') {
       return Err(upsertConfigFile.config || [])
+    } else {
+      return Err([{ message: upsertConfigFile.message, path: [] }])
     }
   }
 
