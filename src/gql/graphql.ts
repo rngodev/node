@@ -43,18 +43,38 @@ export type Branch = {
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
   organization: Organization;
+  scenarios: ScenarioConnection;
   simulations: SimulationConnection;
   streams: StreamConnection;
+  systems: SystemConnection;
 };
 
 
-export type BranchSimulationsArgs = {
+export type BranchScenariosArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
+export type BranchSimulationsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type BranchStreamsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  names?: InputMaybe<Array<Scalars['String']['input']>>;
+  namespaces?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
+export type BranchSystemsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -76,32 +96,10 @@ export type ConfigFile = {
   createdAt: Scalars['DateTime']['output'];
   createdBy: User;
   id: Scalars['ID']['output'];
-  namespace: Namespace;
-  organization: Organization;
+  namespace?: Maybe<Scalars['String']['output']>;
   processingCompletedAt?: Maybe<Scalars['DateTime']['output']>;
-  scenarios: ScenarioConnection;
   scm?: Maybe<ConfigFileScm>;
   source: Scalars['JSONObject']['output'];
-  streams: StreamConnection;
-  systems: SystemConnection;
-};
-
-
-export type ConfigFileScenariosArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-};
-
-
-export type ConfigFileStreamsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-};
-
-
-export type ConfigFileSystemsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type ConfigFileScm = {
@@ -208,36 +206,15 @@ export type MutationVerifyDeviceAuthArgs = {
   input: VerifyDeviceAuth;
 };
 
-export type Namespace = {
-  __typename?: 'Namespace';
-  createdAt: Scalars['DateTime']['output'];
-  createdBy?: Maybe<User>;
-  id: Scalars['ID']['output'];
-  name: Scalars['String']['output'];
-  organization: Organization;
-  streams: StreamConnection;
-};
-
-
-export type NamespaceStreamsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-};
-
-export type NamespaceConnection = {
-  __typename?: 'NamespaceConnection';
-  nodes: Array<Namespace>;
-  pageInfo: PageInfo;
-};
-
 export type Organization = {
   __typename?: 'Organization';
   branches: BranchConnection;
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
-  namespaces: NamespaceConnection;
   plan: OrganizationPlan;
+  previewSimulationVolumeRemaining?: Maybe<Scalars['Int']['output']>;
+  simulations: SimulationConnection;
   streams: StreamConnection;
   stripeCheckoutSessionUrl?: Maybe<Scalars['String']['output']>;
 };
@@ -249,15 +226,21 @@ export type OrganizationBranchesArgs = {
 };
 
 
-export type OrganizationNamespacesArgs = {
+export type OrganizationSimulationsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
 export type OrganizationStreamsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  names?: InputMaybe<Array<Scalars['String']['input']>>;
+  namespaces?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 
@@ -284,12 +267,15 @@ export type PageInfo = {
   __typename?: 'PageInfo';
   endCursor?: Maybe<Scalars['String']['output']>;
   hasNextPage: Scalars['Boolean']['output'];
+  hasPreviousPage: Scalars['Boolean']['output'];
+  startCursor?: Maybe<Scalars['String']['output']>;
 };
 
 /** About the Redwood queries. */
 export type Query = {
   __typename?: 'Query';
   configFile?: Maybe<ConfigFile>;
+  organization?: Maybe<Organization>;
   organizations: Array<Organization>;
   /** Fetches the Redwood root schema. */
   redwood?: Maybe<Redwood>;
@@ -301,6 +287,12 @@ export type Query = {
 /** About the Redwood queries. */
 export type QueryConfigFileArgs = {
   id: Scalars['String']['input'];
+};
+
+
+/** About the Redwood queries. */
+export type QueryOrganizationArgs = {
+  id?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -346,7 +338,7 @@ export type Scenario = {
   eventDelta?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
-  namespace: Namespace;
+  namespace?: Maybe<Scalars['String']['output']>;
   seed?: Maybe<Scalars['Int']['output']>;
   start?: Maybe<Scalars['String']['output']>;
 };
@@ -362,25 +354,20 @@ export type Simulation = {
   branch: Branch;
   createdAt: Scalars['DateTime']['output'];
   createdBy: User;
-  dryRun?: Maybe<SimulationDryRun>;
-  end?: Maybe<Scalars['DateTime']['output']>;
+  end: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
   processingCompletedAt?: Maybe<Scalars['DateTime']['output']>;
   scenario?: Maybe<Scenario>;
-  seed?: Maybe<Scalars['Int']['output']>;
+  seed: Scalars['Int']['output'];
   sinks: Array<Sink>;
-  start?: Maybe<Scalars['DateTime']['output']>;
+  start: Scalars['DateTime']['output'];
+  volume?: Maybe<Scalars['Int']['output']>;
 };
 
 export type SimulationConnection = {
   __typename?: 'SimulationConnection';
   nodes: Array<Simulation>;
   pageInfo: PageInfo;
-};
-
-export type SimulationDryRun = {
-  __typename?: 'SimulationDryRun';
-  dataUnits: Scalars['Int']['output'];
 };
 
 export type Sink = {
@@ -396,9 +383,9 @@ export type Stream = {
   createdBy: User;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
-  namespace: Namespace;
+  namespace?: Maybe<Scalars['String']['output']>;
   outputs: Array<StreamOutput>;
-  references: Array<Stream>;
+  references: Array<StreamReference>;
   schema: Scalars['JSONObject']['output'];
   streamSystems: Array<StreamSystem>;
 };
@@ -415,10 +402,19 @@ export type StreamOutput = {
   mode: OutputMode;
 };
 
+export type StreamReference = {
+  __typename?: 'StreamReference';
+  branch?: Maybe<Scalars['String']['output']>;
+  namespace?: Maybe<Scalars['String']['output']>;
+  stream: Scalars['String']['output'];
+};
+
 export type StreamSystem = {
   __typename?: 'StreamSystem';
+  branch?: Maybe<Scalars['String']['output']>;
+  namespace?: Maybe<Scalars['String']['output']>;
   parameters: Array<StreamSystemParameter>;
-  system: System;
+  system: Scalars['String']['output'];
 };
 
 export type StreamSystemParameter = {
@@ -435,12 +431,11 @@ export type SynchronizationError = Error & {
 export type System = {
   __typename?: 'System';
   branch: Branch;
-  configFile?: Maybe<ConfigFile>;
   createdAt: Scalars['DateTime']['output'];
   createdBy: User;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
-  namespace: Namespace;
+  namespace?: Maybe<Scalars['String']['output']>;
   parameters: Array<SystemParameter>;
 };
 
@@ -467,7 +462,7 @@ export type UpsertConfigFileFailure = {
   config?: Maybe<Array<JsonError>>;
 };
 
-export type UpsertConfigFileResult = ConfigFile | UpsertConfigFileFailure;
+export type UpsertConfigFileResult = ConfigFile | SynchronizationError | UpsertConfigFileFailure;
 
 export type UpsertConfigFileScm = {
   branch: Scalars['String']['input'];
@@ -480,6 +475,7 @@ export type UpsertConfigFileScm = {
 export type User = {
   __typename?: 'User';
   id: Scalars['ID']['output'];
+  imageUrl?: Maybe<Scalars['String']['output']>;
   name: Scalars['String']['output'];
 };
 
@@ -518,7 +514,7 @@ export type UpsertConfigFileMutationVariables = Exact<{
 }>;
 
 
-export type UpsertConfigFileMutation = { __typename?: 'Mutation', upsertConfigFile: { __typename: 'ConfigFile', id: string, branch: { __typename?: 'Branch', id: string } } | { __typename: 'UpsertConfigFileFailure', config?: Array<never> | null } };
+export type UpsertConfigFileMutation = { __typename?: 'Mutation', upsertConfigFile: { __typename: 'ConfigFile', id: string, branch: { __typename?: 'Branch', id: string } } | { __typename: 'SynchronizationError', message: string } | { __typename: 'UpsertConfigFileFailure', config?: Array<never> | null } };
 
 export type PollConfigFileQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -558,7 +554,7 @@ export type PollSimulationSinksQuery = { __typename?: 'Query', simulation?: { __
 
 export const AuthDeviceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"authDevice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"authDevice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deviceCode"}},{"kind":"Field","name":{"kind":"Name","value":"userCode"}},{"kind":"Field","name":{"kind":"Name","value":"verificationUrl"}}]}}]}}]} as unknown as DocumentNode<AuthDeviceMutation, AuthDeviceMutationVariables>;
 export const GetVerifiedDeviceAuthDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getVerifiedDeviceAuth"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deviceCode"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"verifiedDeviceAuth"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"deviceCode"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deviceCode"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}}]}}]}}]} as unknown as DocumentNode<GetVerifiedDeviceAuthQuery, GetVerifiedDeviceAuthQueryVariables>;
-export const UpsertConfigFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"upsertConfigFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpsertConfigFile"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upsertConfigFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ConfigFile"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"branch"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UpsertConfigFileFailure"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"config"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]}}]}}]} as unknown as DocumentNode<UpsertConfigFileMutation, UpsertConfigFileMutationVariables>;
+export const UpsertConfigFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"upsertConfigFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpsertConfigFile"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upsertConfigFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ConfigFile"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"branch"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"UpsertConfigFileFailure"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"config"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SynchronizationError"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]}}]} as unknown as DocumentNode<UpsertConfigFileMutation, UpsertConfigFileMutationVariables>;
 export const PollConfigFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"pollConfigFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"configFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"processingCompletedAt"}}]}}]}}]} as unknown as DocumentNode<PollConfigFileQuery, PollConfigFileQueryVariables>;
 export const CreateSimulationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createSimulation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateSimulation"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createSimulation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Simulation"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CreateSimulationFailure"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"branchId"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]}}]}}]}}]} as unknown as DocumentNode<CreateSimulationMutation, CreateSimulationMutationVariables>;
 export const PollSimulationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"pollSimulation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"simulation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"processingCompletedAt"}}]}}]}}]} as unknown as DocumentNode<PollSimulationQuery, PollSimulationQueryVariables>;
