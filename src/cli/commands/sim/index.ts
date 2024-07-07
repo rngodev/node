@@ -41,12 +41,12 @@ export default class Run extends Command {
 
     const syncSpinner = ora('Syncing config').start()
 
-    let branchId: string | undefined = undefined
+    let branch: string | undefined = undefined
     const syncConfigResult = await rngo.upsertConfigFile()
 
     if (syncConfigResult.ok) {
       syncSpinner.succeed()
-      branchId = syncConfigResult.val.branchId
+      branch = syncConfigResult.val.branch
     } else {
       syncSpinner.fail()
       logUserErrors(this, syncConfigResult.val)
@@ -56,7 +56,7 @@ export default class Run extends Command {
     const runSpinner = ora('Running simulation').start()
 
     const createSimulationResult = await rngo.createSimulation(
-      branchId!,
+      branch,
       parsedSeed
     )
 

@@ -32,7 +32,7 @@ describe('Rngo#upsertConfigFile', () => {
           __typename: 'ConfigFile',
           id: 'clse48vh2000a08l2h92rhyps',
           branch: {
-            id: 'clse4l1vc000008kwer9p5t5d',
+            name: 'feature1',
           },
         },
       })
@@ -47,6 +47,6 @@ describe('Rngo#upsertConfigFile', () => {
 
     const configFile = result.unwrap()
     expect(configFile.id).toBe('clse48vh2000a08l2h92rhyps')
-    expect(configFile.branchId).toBe('clse4l1vc000008kwer9p5t5d')
+    expect(configFile.branch).toBe('feature1')
   })
 })

@@ -36,7 +36,7 @@ type ParsedRngoOptions = {
   directory: string
 }
 
-export type ConfigFile = { id: string; branchId: string }
+export type ConfigFile = { id: string; branch?: string }
 export type ConfigFileError = { path: string[]; message: string }
 
 export type SimulationError =
@@ -287,7 +287,7 @@ export class Rngo {
             ... on ConfigFile {
               id
               branch {
-                id
+                name
               }
             }
             ... on UpsertConfigFileFailure {
@@ -333,7 +333,7 @@ export class Rngo {
       if (result) {
         return Ok({
           id: upsertConfigFile.id,
-          branchId: upsertConfigFile.branch.id,
+          branch: upsertConfigFile.branch?.name,
         })
       } else {
         throw new Error(`Config file processing timed out`)
@@ -346,8 +346,8 @@ export class Rngo {
   }
 
   async createSimulation(
-    branchId: string,
-    seed: number | undefined
+    branch?: string,
+    seed?: number
   ): Promise<Result<string, string[]>> {
     const { createSimulation } = await this.gqlClient.request(
       gql(/* GraphQL */ `
@@ -357,11 +357,6 @@ export class Rngo {
             ... on Simulation {
               id
             }
-            ... on CreateSimulationFailure {
-              branchId {
-                message
-              }
-            }
           }
         }
       `),
@@ -369,7 +364,7 @@ export class Rngo {
         // TODO: 1. pass in spec name, once server knows about specs
         // 2. overrides come from CLI args
         input: {
-          branchId,
+          branch,
           seed,
           // seed: spec?.seed,
           // start: spec?.start,
@@ -403,9 +398,6 @@ export class Rngo {
       } else {
         throw new Error(`Simulation processing timed out`)
       }
-    } else if (createSimulation.branchId) {
-      // return Err(createSimulation.branchId.map((e) => e.message))))
-      return Err(['Unknown branchId'])
     } else {
       throw new Error(
         `Unhandled GraphQL error: ${JSON.stringify(createSimulation)}`
