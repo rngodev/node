@@ -73,7 +73,13 @@ const SystemSchema = z.object({
   type: z.string().optional(),
   output: OutputSchema.optional(),
   parameters: z.record(SystemParameterSchema).optional(),
-  import: z.string().optional(),
+  scripts: z
+    .object({
+      preImport: z.string().optional(),
+      import: z.string().optional(),
+      postImport: z.string().optional(),
+    })
+    .optional(),
 })
 
 const StreamSystemSchema = z.object({
@@ -82,6 +88,7 @@ const StreamSystemSchema = z.object({
 
 const StreamSchema = z.object({
   output: OutputSchema.optional(),
+  outputs: z.array(OutputSchema).optional(),
   systems: z.record(StreamSystemSchema).optional(),
   rate: z.string().optional(),
   schema: JsonSchemaSchema,
