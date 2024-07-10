@@ -289,6 +289,7 @@ export class Rngo {
               branch {
                 name
               }
+              processingCompletedAt
             }
             ... on UpsertConfigFileFailure {
               config {
@@ -347,7 +348,11 @@ export class Rngo {
 
   async createSimulation(
     branch?: string,
-    seed?: number
+    scenario?: string,
+    seed?: number,
+    start?: string,
+    end?: string,
+    streams?: string[]
   ): Promise<Result<string, string[]>> {
     const { createSimulation } = await this.gqlClient.request(
       gql(/* GraphQL */ `
@@ -365,10 +370,11 @@ export class Rngo {
         // 2. overrides come from CLI args
         input: {
           branch,
+          scenario,
           seed,
-          // seed: spec?.seed,
-          // start: spec?.start,
-          // end: spec?.end,
+          start,
+          end,
+          streams,
         },
       }
     )

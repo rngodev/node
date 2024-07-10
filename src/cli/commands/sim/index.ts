@@ -9,14 +9,31 @@ export default class Run extends Command {
   static summary = 'Run a new simulation and download the data.'
 
   static flags = {
-    branch: Flags.string({ char: 'b' }),
     config: Flags.string({
       char: 'c',
       summary: 'Path to config file.',
     }),
+    branch: Flags.string({ char: 'b' }),
+    scenario: Flags.string({
+      char: 'c',
+      summary: 'The name of the scenario to use for the simulation',
+    }),
     seed: Flags.string({
-      char: 's',
+      char: 'i',
       summary: 'Seed for the simulation.',
+    }),
+    start: Flags.string({
+      char: 's',
+      summary: 'When the simulation should start',
+    }),
+    end: Flags.string({
+      char: 'e',
+      summary: 'When the simulation should end',
+    }),
+    streams: Flags.string({
+      char: 't',
+      summary: 'The streams that should be included in the simulation',
+      multiple: true,
     }),
   }
 
@@ -57,7 +74,11 @@ export default class Run extends Command {
 
     const createSimulationResult = await rngo.createSimulation(
       branch,
-      parsedSeed
+      cmd.flags.scenario,
+      parsedSeed,
+      cmd.flags.start,
+      cmd.flags.end,
+      cmd.flags.streams
     )
 
     let simulationId
