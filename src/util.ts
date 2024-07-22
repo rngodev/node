@@ -62,38 +62,21 @@ export async function downloadUrl(
     throw new Error(`File download failed: ${response.status} ${url}`)
   }
 
-  const filepath = filePathForUrl(url, directory)
-  const directoryExists = await fileExists(nodePath.dirname(filepath))
+  const urlPathParts = new URL(url).pathname.split('/')
+  const filePath = `${directory}/${urlPathParts[urlPathParts.length - 1]}`
+
+  const directoryExists = await fileExists(nodePath.dirname(filePath))
 
   if (!directoryExists) {
-    await nodeFs.mkdir(nodePath.dirname(filepath), { recursive: true })
+    await nodeFs.mkdir(nodePath.dirname(filePath), { recursive: true })
   }
 
-  const writer = createWriteStream(filepath)
+  const writer = createWriteStream(filePath)
   response.body!.pipe(writer)
 
   return new Promise((resolve, reject) => {
-    writer.on('finish', () => resolve(filepath))
+    writer.on('finish', () => resolve(filePath))
     writer.on('error', reject)
-  })
-}
-
-export function filePathForUrl(url: string, directory: string) {
-  const urlPath = new URL(url).pathname
-
-  let largestPrefix = ''
-  for (let i = 1; i < urlPath.length; i++) {
-    const prefix = urlPath.substring(0, i)
-    if (directory.indexOf(prefix) > -1) {
-      largestPrefix = prefix
-    }
-  }
-
-  const relativeUrlPath = urlPath.replace(largestPrefix, '')
-
-  return nodePath.format({
-    dir: nodePath.join(directory, nodePath.dirname(relativeUrlPath)),
-    base: nodePath.basename(relativeUrlPath),
   })
 }
 
