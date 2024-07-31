@@ -73,6 +73,11 @@ export function tableInfoToStreams(
             tableInfo.table,
             column
           )
+
+          if (column.is_nullable === 'NO') {
+            const existing = result.required || []
+            result.required = [...existing, column.column_name]
+          }
         }
 
         return result

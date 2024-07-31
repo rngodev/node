@@ -33,6 +33,7 @@ export type JsonSchema =
   | {
       type: 'object'
       properties: { [key: string]: JsonSchema }
+      required?: string[]
     }
   | {
       type: 'array'
