@@ -1,7 +1,7 @@
 import TsResult, { Result } from 'ts-results'
 import { z } from 'zod'
 
-import { JsonSchema, Stream } from '@cli/config'
+import { Schema, SchemaType, Stream } from '@cli/config'
 import { InferArgs, InferError, getSystemParameter } from '@cli/systems'
 
 import { ColumnInfo, TableInfo } from './query'
@@ -66,23 +66,23 @@ export function tableInfoToStreams(
   systemName: string
 ): Record<string, Stream> {
   return tableInfo.reduce((streams: Record<string, Stream>, tableInfo) => {
-    const schema: JsonSchema = tableInfo.columns.reduce(
+    const schema: Schema = tableInfo.columns.reduce(
       (result, column) => {
-        if (result.type === 'object') {
+        if (result.properties) {
           result.properties[column.column_name] = columnToJsonSchema(
             tableInfo.table,
             column
           )
+        }
 
-          if (column.is_nullable === 'NO') {
-            const existing = result.required || []
-            result.required = [...existing, column.column_name]
-          }
+        if (column.is_nullable === 'NO') {
+          const existing = result.required || []
+          result.required = [...existing, column.column_name]
         }
 
         return result
       },
-      { type: 'object', properties: {} } as JsonSchema
+      { type: 'object', properties: {} } as Schema
     )
 
     const stream: Stream = {
@@ -96,14 +96,14 @@ export function tableInfoToStreams(
   }, {})
 }
 
-function columnToJsonSchema(table: string, column: ColumnInfo): JsonSchema {
+function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
   let ref = null
 
   if (column.referenced_column && column.referenced_table) {
     ref = { table: column.referenced_table, column: column.referenced_column }
   }
 
-  let udtBasedType: JsonSchema['type'] = 'string'
+  let udtBasedType: SchemaType = 'string'
 
   if (column.udt_type === PostgresDataType.INTEGER) {
     udtBasedType = 'integer'
