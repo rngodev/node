@@ -14,7 +14,9 @@
     "test": "yarn compile && NODE_OPTIONS=--experimental-vm-modules jest",
     "dev": "./bin/dev.js",
     "compile": "rm -rf dist/ && tsc && tsc-alias",
-    "codegen": "graphql-codegen"
+    "codegen": "graphql-codegen",
+    "setup-test": "docker-compose down && docker-compose up -d",
+    "psql": "PGPASSWORD=pw16 psql -h localhost -U user16 -p 54316 db16"
   },
   "files": [
     "/bin",

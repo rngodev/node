@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  postgres16:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: pw16
+      POSTGRES_USER: user16
+      POSTGRES_DB: db16
+    ports:
+      - '54316:5432'
+    volumes:
+      - ./schema:/docker-entrypoint-initdb.d/

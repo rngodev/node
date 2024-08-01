@@ -3,57 +3,47 @@ import { z } from 'zod'
 
 import * as rngoUtil from '@util'
 
+const RngoProbabilitySchema = z.object({
+  type: z.record(z.number().int()),
+  properties: z.record(z.number().gte(0).lte(1)),
+})
+
 const RngoSchema = z.object({
-  value: z.string(),
+  value: z.string().optional(),
+  properties: RngoProbabilitySchema.optional(),
 })
 
-const BooleanSchema = z.object({
-  type: z.literal('boolean'),
-  rngo: RngoSchema.optional(),
-})
+const SchemaTypeSchema = z.enum([
+  'object',
+  'array',
+  'string',
+  'integer',
+  'number',
+  'boolean',
+  'null',
+])
 
-const IntegerSchema = z.object({
-  type: z.literal('integer'),
-  rngo: RngoSchema.optional(),
-  minimum: z.bigint().optional(),
-  maximum: z.bigint().optional(),
-})
-
-const StringSchema = z.object({
-  type: z.literal('string'),
-  format: z.enum(['date-time']).optional(),
+const BaseSchema = z.object({
+  type: SchemaTypeSchema.or(z.array(SchemaTypeSchema)),
   enum: z.array(z.string()).optional(),
   rngo: RngoSchema.optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  format: z.string().optional(),
+  minimum: z.bigint().optional(),
+  maximum: z.bigint().optional(),
+  required: z.array(z.string()).optional(),
 })
 
-export type JsonSchema =
-  | z.infer<typeof BooleanSchema>
-  | z.infer<typeof IntegerSchema>
-  | z.infer<typeof StringSchema>
-  | {
-      type: 'object'
-      properties: { [key: string]: JsonSchema }
-    }
-  | {
-      type: 'array'
-      items: JsonSchema
-    }
+export type Schema = z.infer<typeof BaseSchema> & {
+  properties?: { [key: string]: Schema }
+  items?: Schema
+}
 
-const JsonSchemaSchema: z.ZodType<JsonSchema> = z.lazy(() =>
-  z.discriminatedUnion('type', [
-    BooleanSchema,
-    IntegerSchema,
-    StringSchema,
-    z.object({
-      type: z.literal('object'),
-      properties: z.record(JsonSchemaSchema),
-    }),
-    z.object({
-      type: z.literal('array'),
-      items: JsonSchemaSchema,
-    }),
-  ])
-)
+const SchemaSchema: z.ZodType<Schema> = BaseSchema.extend({
+  properties: z.lazy(() => z.record(SchemaSchema).optional()),
+  items: z.lazy(() => SchemaSchema.optional()),
+})
 
 const SystemParameterTypeSchema = z.enum(['integer'])
 
@@ -91,7 +81,7 @@ const StreamSchema = z.object({
   outputs: z.array(OutputSchema).optional(),
   systems: z.record(StreamSystemSchema).optional(),
   rate: z.string().optional(),
-  schema: JsonSchemaSchema,
+  schema: SchemaSchema,
 })
 
 export const LocalConfigSchema = z.object({
@@ -110,6 +100,7 @@ export const LocalConfigSchema = z.object({
 })
 
 export type LocalConfig = z.infer<typeof LocalConfigSchema>
+export type SchemaType = z.infer<typeof SchemaTypeSchema>
 export type Stream = z.infer<typeof StreamSchema>
 export type System = z.infer<typeof SystemSchema>
 export type SystemParameter = z.infer<typeof SystemParameterSchema>
@@ -119,7 +110,7 @@ export type ConfigUpdateCommand =
       type: 'addObjectProperty'
       streamName: string
       path: (string | number)[]
-      property: JsonSchema
+      property: Schema
     }
   | {
       type: 'addStream'
@@ -129,8 +120,8 @@ export type ConfigUpdateCommand =
   | {
       type: 'replaceStreamSchema'
       streamName: string
-      oldSchema: JsonSchema
-      newSchema: JsonSchema
+      oldSchema: Schema
+      newSchema: Schema
     }
 
 export function getConfigUpdateCommandsForMerge(
@@ -144,9 +135,8 @@ export function getConfigUpdateCommandsForMerge(
       let existingStream = (baseConfig.streams || {})[streamName]
 
       if (existingStream) {
-        if (existingStream.schema.type === 'object') {
-          existingStream.schema.properties
-          if (stream.schema.type === 'object') {
+        if (existingStream.schema.properties) {
+          if (stream.schema.properties) {
             const existingProperties = existingStream.schema.properties
             Object.entries(stream.schema.properties).forEach(
               ([propertyName, property]) => {

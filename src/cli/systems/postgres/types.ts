@@ -41,6 +41,16 @@ export const TypeMaps: {
     udtNames: ['int8'],
   },
   {
+    postgresType: PostgresDataType.BOOLEAN,
+    dataTypes: ['boolean'],
+    udtNames: [],
+  },
+  {
+    postgresType: PostgresDataType.CHAR,
+    dataTypes: ['character'],
+    udtNames: ['bpchar'],
+  },
+  {
     postgresType: PostgresDataType.INTEGER,
     dataTypes: ['integer'],
     udtNames: ['int4'],
@@ -56,14 +66,24 @@ export const TypeMaps: {
     udtNames: ['text'],
   },
   {
-    postgresType: PostgresDataType.TIMESTAMPTZ,
+    postgresType: PostgresDataType.TIMESTAMP,
     dataTypes: ['timestamp with time zone'],
     udtNames: ['timestamptz'],
+  },
+  {
+    postgresType: PostgresDataType.TIMESTAMPTZ,
+    dataTypes: ['timestamp without time zone'],
+    udtNames: ['timestamp'],
   },
   {
     postgresType: PostgresDataType.USER_DEFINED,
     dataTypes: ['USER-DEFINED'],
     udtNames: [],
+  },
+  {
+    postgresType: PostgresDataType.VARCHAR,
+    dataTypes: ['character varying'],
+    udtNames: ['varchar'],
   },
 ]
 

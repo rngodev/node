@@ -38,11 +38,12 @@ export default class Infer extends Command {
           } else {
             spinner.fail()
             logUserErrors(this, result.val)
+            this.exit()
           }
         }
       }
 
-      const spinner = ora('Caclulating config updates').start()
+      const spinner = ora('Calculating config updates').start()
       const commands = getConfigUpdateCommandsForMerge(config, systems)
       spinner.succeed()
 

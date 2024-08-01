@@ -22,6 +22,7 @@ export interface ColumnInfo {
   is_bigserial: boolean
   udt_type?: PostgresDataType
   enum_values?: string[]
+  character_maximum_length?: number
   referenced_table?: string // Foreign key information
   referenced_column?: string // Foreign key information
 }
@@ -101,6 +102,7 @@ export async function pgHelper(
           c.data_type,
           c.udt_name,
           c.is_nullable,
+          c.character_maximum_length,
           (
             SELECT count(*) > 0
             FROM information_schema.table_constraints tc
@@ -135,7 +137,7 @@ export async function pgHelper(
         ON fk_info.from_table = '"${table.table_name}"'::regclass
         AND fk_info.from_column = c.column_name
         WHERE table_name = '${table.table_name}'
-        GROUP BY c.column_name, c.data_type, c.udt_name, c.is_nullable, fk_info.referenced_table, fk_info.referenced_column, c.ordinal_position
+        GROUP BY c.column_name, c.data_type, c.udt_name, c.is_nullable, fk_info.referenced_table, fk_info.referenced_column, c.ordinal_position, c.character_maximum_length
         ORDER BY c.ordinal_position
     `)
 
@@ -157,6 +159,7 @@ export async function pgHelper(
           is_primary_key: column.is_primary_key,
           is_bigserial: column.is_bigserial,
           enum_values: enumValues.length > 0 ? enumValues : undefined,
+          character_maximum_length: column.character_maximum_length,
           // Include the referenced table and column information if it exists
           referenced_table: column.referenced_table,
           referenced_column: column.referenced_column,

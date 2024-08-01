@@ -64,4 +64,37 @@ describe('tableInfoToStreams', () => {
       },
     })
   })
+
+  test('required columns', () => {
+    const tableInfo: TableInfo[] = [
+      {
+        table: 'users',
+        columns: [
+          {
+            column_name: 'id',
+            data_type: PostgresDataType.BIGINT,
+            is_nullable: 'NO',
+            is_primary_key: true,
+            is_bigserial: true,
+          },
+          {
+            column_name: 'name',
+            data_type: PostgresDataType.TEXT,
+            is_nullable: 'YES',
+            is_primary_key: false,
+            is_bigserial: false,
+          },
+        ],
+        row_count: 50,
+      },
+    ]
+
+    const streams = tableInfoToStreams(tableInfo, 'db')
+
+    if (streams.users.schema.type === 'object') {
+      expect(streams.users.schema.required).toEqual(['id'])
+    } else {
+      fail('schema is not an object')
+    }
+  })
 })
