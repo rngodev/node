@@ -69,6 +69,7 @@ describe('inferConfigFromSystem', () => {
 
       const aSchema = streams.a.schema
       expect(aSchema.type).toEqual('object')
+      expect(aSchema.required).toEqual(['id'])
 
       const aBintgProp = aSchema.properties?.bintg
       expect(aBintgProp?.type).toBe('integer')
@@ -117,7 +118,8 @@ describe('inferConfigFromSystem', () => {
       expect(aEnmProp?.enum).toStrictEqual(['a', 'b'])
 
       const bSchema = streams.b.schema
-      expect(aSchema.type).toEqual('object')
+      expect(bSchema.type).toEqual('object')
+      expect(bSchema.required).toEqual(['aid'])
 
       const bAidProp = bSchema.properties?.aid
       expect(bAidProp?.type).toBe('integer')
