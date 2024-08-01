@@ -69,11 +69,25 @@ describe('inferConfigFromSystem', () => {
 
       const aSchema = streams.a.schema
       expect(aSchema.type).toEqual('object')
-      expect(aSchema.required).toContain('serial')
 
-      const aSerialProp = aSchema.properties?.serial
-      expect(aSerialProp?.type).toBe('integer')
-      expect(aSerialProp?.rngo?.value).toBe('(streams.a.last.id ?? 0) + 1')
+      const aBintgProp = aSchema.properties?.bintg
+      expect(aBintgProp?.type).toBe('integer')
+      expect(aBintgProp?.minimum).toBe(BigInt(-9223372036854775808n))
+      expect(aBintgProp?.maximum).toBe(BigInt(9223372036854775807n))
+
+      const aIntgProp = aSchema.properties?.intg
+      expect(aIntgProp?.type).toBe('integer')
+      expect(aIntgProp?.minimum).toBe(BigInt(-2147483648))
+      expect(aIntgProp?.maximum).toBe(BigInt(2147483647))
+
+      const aSintgProp = aSchema.properties?.sintg
+      expect(aSintgProp?.type).toBe('integer')
+      expect(aSintgProp?.minimum).toBe(BigInt(-32768))
+      expect(aSintgProp?.maximum).toBe(BigInt(32767))
+
+      const aIdProp = aSchema.properties?.id
+      expect(aIdProp?.type).toBe('integer')
+      expect(aIdProp?.rngo?.value).toBe('(streams.a.last.id ?? 0) + 1')
 
       const aTxtProp = aSchema.properties?.txt
       expect(aTxtProp?.type).toBe('string')
@@ -97,6 +111,13 @@ describe('inferConfigFromSystem', () => {
       const aTstzProp = aSchema.properties?.tstz
       expect(aTstzProp?.type).toBe('string')
       expect(aTstzProp?.format).toBe('date-time')
+
+      const bSchema = streams.b.schema
+      expect(aSchema.type).toEqual('object')
+
+      const bAidProp = bSchema.properties?.aid
+      expect(bAidProp?.type).toBe('integer')
+      expect(bAidProp?.rngo?.value).toBe('streams.a.random.id')
     }
   })
 })
