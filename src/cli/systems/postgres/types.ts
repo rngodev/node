@@ -41,6 +41,11 @@ export const TypeMaps: {
     udtNames: ['int8'],
   },
   {
+    postgresType: PostgresDataType.BOOLEAN,
+    dataTypes: ['boolean'],
+    udtNames: [],
+  },
+  {
     postgresType: PostgresDataType.INTEGER,
     dataTypes: ['integer'],
     udtNames: ['int4'],

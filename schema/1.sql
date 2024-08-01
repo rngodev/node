@@ -1,3 +1,4 @@
 CREATE TABLE a (
-    serial bigserial
+    serial bigserial,
+    bool boolean
 );

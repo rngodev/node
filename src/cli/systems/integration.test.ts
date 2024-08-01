@@ -61,6 +61,7 @@ describe('inferConfigFromSystem', () => {
       },
       {}
     )
+    console.log(result)
 
     expect(result.ok).toEqual(true)
 
@@ -72,9 +73,12 @@ describe('inferConfigFromSystem', () => {
       expect(aSchema.type).toEqual('object')
       expect(aSchema.required).toContain('serial')
 
-      const aSerialProperty = aSchema.properties?.serial
-      expect(aSerialProperty?.type).toBe('integer')
-      expect(aSerialProperty?.rngo?.value).toBe('(streams.a.last.id ?? 0) + 1')
+      const aSerialProp = aSchema.properties?.serial
+      expect(aSerialProp?.type).toBe('integer')
+      expect(aSerialProp?.rngo?.value).toBe('(streams.a.last.id ?? 0) + 1')
+
+      const aBoolProp = aSchema.properties?.bool
+      expect(aBoolProp?.type).toBe('boolean')
     }
   })
 })
