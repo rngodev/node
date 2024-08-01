@@ -115,7 +115,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
         type: 'array',
         items: {
           type: udtBasedType,
-          enum: column.enum_values,
+          enum: column.enum_values?.reverse(),
         },
       }
 
@@ -187,7 +187,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
     case PostgresDataType.USER_DEFINED:
       return {
         type: udtBasedType,
-        enum: column.enum_values,
+        enum: column.enum_values?.reverse(),
       }
 
     case PostgresDataType.CHAR:

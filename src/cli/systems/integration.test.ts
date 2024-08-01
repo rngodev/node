@@ -112,12 +112,21 @@ describe('inferConfigFromSystem', () => {
       expect(aTstzProp?.type).toBe('string')
       expect(aTstzProp?.format).toBe('date-time')
 
+      const aEnmProp = aSchema.properties?.enm
+      expect(aEnmProp?.type).toBe('string')
+      expect(aEnmProp?.enum).toStrictEqual(['a', 'b'])
+
       const bSchema = streams.b.schema
       expect(aSchema.type).toEqual('object')
 
       const bAidProp = bSchema.properties?.aid
       expect(bAidProp?.type).toBe('integer')
       expect(bAidProp?.rngo?.value).toBe('streams.a.random.id')
+
+      const bBintgProp = bSchema.properties?.bintg
+      expect(bBintgProp?.type).toBe('array')
+      expect(bBintgProp?.items?.type).toBe('string')
+      expect(bBintgProp?.items?.enum).toStrictEqual(['a', 'b'])
     }
   })
 })

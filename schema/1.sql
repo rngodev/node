@@ -1,3 +1,5 @@
+CREATE TYPE role AS ENUM ('a', 'b');
+
 CREATE TABLE a (
     id bigserial PRIMARY KEY,
     bintg bigint,
@@ -8,9 +10,11 @@ CREATE TABLE a (
     vchr varchar(255),
     bool boolean,
     ts timestamp,
-    tstz timestamptz
+    tstz timestamptz,
+    enm role
 );
 
 CREATE TABLE b (
-    aid bigint REFERENCES a(id) NOT NULL
+    aid bigint REFERENCES a(id) NOT NULL,
+    bintg role[]
 );
