@@ -9,4 +9,5 @@ jobs:
         with:
           node-version: 'lts/hydrogen'
       - run: yarn install
+      - run: docker-compose up -d
       - run: yarn test
