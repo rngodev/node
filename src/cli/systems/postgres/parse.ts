@@ -190,6 +190,13 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
         enum: column.enum_values,
       }
 
+    case PostgresDataType.CHAR:
+    case PostgresDataType.VARCHAR:
+      return {
+        type: 'string',
+        maxLength: column.character_maximum_length,
+      }
+
     default:
       return {
         type: 'string',

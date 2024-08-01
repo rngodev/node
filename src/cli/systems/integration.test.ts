@@ -75,6 +75,18 @@ describe('inferConfigFromSystem', () => {
       expect(aSerialProp?.type).toBe('integer')
       expect(aSerialProp?.rngo?.value).toBe('(streams.a.last.id ?? 0) + 1')
 
+      const aTxtProp = aSchema.properties?.txt
+      expect(aTxtProp?.type).toBe('string')
+      expect(aTxtProp?.maxLength).toBeUndefined()
+
+      const aChrProp = aSchema.properties?.chr
+      expect(aChrProp?.type).toBe('string')
+      expect(aChrProp?.maxLength).toBe(512)
+
+      const aVchrProp = aSchema.properties?.vchr
+      expect(aVchrProp?.type).toBe('string')
+      expect(aVchrProp?.maxLength).toBe(255)
+
       const aBoolProp = aSchema.properties?.bool
       expect(aBoolProp?.type).toBe('boolean')
 

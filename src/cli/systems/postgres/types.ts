@@ -46,6 +46,11 @@ export const TypeMaps: {
     udtNames: [],
   },
   {
+    postgresType: PostgresDataType.CHAR,
+    dataTypes: ['character'],
+    udtNames: ['bpchar'],
+  },
+  {
     postgresType: PostgresDataType.INTEGER,
     dataTypes: ['integer'],
     udtNames: ['int4'],
@@ -74,6 +79,11 @@ export const TypeMaps: {
     postgresType: PostgresDataType.USER_DEFINED,
     dataTypes: ['USER-DEFINED'],
     udtNames: [],
+  },
+  {
+    postgresType: PostgresDataType.VARCHAR,
+    dataTypes: ['character varying'],
+    udtNames: ['varchar'],
   },
 ]
 
