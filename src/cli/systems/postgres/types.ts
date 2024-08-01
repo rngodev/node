@@ -61,9 +61,14 @@ export const TypeMaps: {
     udtNames: ['text'],
   },
   {
-    postgresType: PostgresDataType.TIMESTAMPTZ,
+    postgresType: PostgresDataType.TIMESTAMP,
     dataTypes: ['timestamp with time zone'],
     udtNames: ['timestamptz'],
+  },
+  {
+    postgresType: PostgresDataType.TIMESTAMPTZ,
+    dataTypes: ['timestamp without time zone'],
+    udtNames: ['timestamp'],
   },
   {
     postgresType: PostgresDataType.USER_DEFINED,

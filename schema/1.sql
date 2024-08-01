@@ -1,4 +1,6 @@
 CREATE TABLE a (
     serial bigserial,
-    bool boolean
+    bool boolean,
+    ts timestamp,
+    tstz timestamptz
 );

@@ -61,7 +61,6 @@ describe('inferConfigFromSystem', () => {
       },
       {}
     )
-    console.log(result)
 
     expect(result.ok).toEqual(true)
 
@@ -69,7 +68,6 @@ describe('inferConfigFromSystem', () => {
       const streams = result.val.streams || {}
 
       const aSchema = streams.a.schema
-      console.log(aSchema)
       expect(aSchema.type).toEqual('object')
       expect(aSchema.required).toContain('serial')
 
@@ -79,6 +77,14 @@ describe('inferConfigFromSystem', () => {
 
       const aBoolProp = aSchema.properties?.bool
       expect(aBoolProp?.type).toBe('boolean')
+
+      const aTsProp = aSchema.properties?.ts
+      expect(aTsProp?.type).toBe('string')
+      expect(aTsProp?.format).toBe('date-time')
+
+      const aTstzProp = aSchema.properties?.tstz
+      expect(aTstzProp?.type).toBe('string')
+      expect(aTstzProp?.format).toBe('date-time')
     }
   })
 })
