@@ -423,10 +423,6 @@ export class Rngo {
             __typename
             ... on FileSink {
               id
-              importScriptUrl
-              archives {
-                url
-              }
             }
             ... on DrainSimulationToFileValidationError {
               simulationId {
@@ -452,7 +448,7 @@ export class Rngo {
     )
 
     if (drainSimulationToFile.__typename == 'FileSink') {
-      const result = await rngoUtil.poll(async () => {
+      const completedSink = await rngoUtil.poll(async () => {
         const { simulation } = await this.gqlClient.request(
           gql(/* GraphQL */ `
             query pollSimulationSinks($id: String!) {
@@ -461,6 +457,13 @@ export class Rngo {
                 sinks {
                   id
                   completedAt
+                  ... on FileSink {
+                    id
+                    importScriptUrl
+                    archives {
+                      url
+                    }
+                  }
                 }
               }
             }
@@ -476,17 +479,17 @@ export class Rngo {
           )
 
           if (sink?.completedAt) {
-            return true
+            return sink
           }
         }
       })
 
-      if (result) {
+      if (completedSink) {
         return Ok({
           id: drainSimulationToFile.id,
           simulationId: simulationId,
-          importScriptUrl: drainSimulationToFile.importScriptUrl || undefined,
-          archives: drainSimulationToFile.archives,
+          importScriptUrl: completedSink.importScriptUrl || undefined,
+          archives: completedSink.archives,
         })
       } else {
         throw new Error(`Drain simulation to file timed out`)
