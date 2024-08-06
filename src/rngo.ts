@@ -348,6 +348,7 @@ export class Rngo {
 
   async createSimulation(
     branch?: string,
+    configFileId?: string,
     scenario?: string,
     seed?: number,
     start?: string,
@@ -370,6 +371,7 @@ export class Rngo {
         // 2. overrides come from CLI args
         input: {
           branch,
+          configFileId,
           scenario,
           seed,
           start,

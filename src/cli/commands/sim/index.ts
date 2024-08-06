@@ -58,12 +58,12 @@ export default class Run extends Command {
 
     const syncSpinner = ora('Syncing config').start()
 
-    let branch: string | undefined = undefined
+    let configFileId: string | undefined = undefined
     const syncConfigResult = await rngo.upsertConfigFile()
 
     if (syncConfigResult.ok) {
       syncSpinner.succeed()
-      branch = syncConfigResult.val.branch
+      configFileId = syncConfigResult.val.id
     } else {
       syncSpinner.fail()
       logUserErrors(this, syncConfigResult.val)
@@ -73,7 +73,8 @@ export default class Run extends Command {
     const runSpinner = ora('Running simulation').start()
 
     const createSimulationResult = await rngo.createSimulation(
-      branch,
+      undefined,
+      configFileId,
       cmd.flags.scenario,
       parsedSeed,
       cmd.flags.start,
@@ -137,13 +138,10 @@ To proceed, go to ${chalk.yellow.bold(
     await rngo.downloadFileSink(simulationId, sink)
     dowloadSpinner.succeed()
 
-    const importSpinner = ora('Importing data').start()
-
     if (sink.importScriptUrl) {
+      const importSpinner = ora('Importing data').start()
       await rngo.importSimulation(simulationId)
       importSpinner.succeed()
-    } else {
-      importSpinner.info('No import scripts found')
     }
   }
 }
