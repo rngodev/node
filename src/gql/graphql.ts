@@ -39,7 +39,6 @@ export type Branch = {
   __typename?: 'Branch';
   createdAt: Scalars['DateTime']['output'];
   createdBy?: Maybe<User>;
-  draft: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   organization: Organization;
   scenarios: ScenarioConnection;
@@ -95,7 +94,6 @@ export type ConfigFile = {
   createdAt: Scalars['DateTime']['output'];
   createdBy: User;
   id: Scalars['ID']['output'];
-  namespace?: Maybe<Scalars['String']['output']>;
   processingCompletedAt?: Maybe<Scalars['DateTime']['output']>;
   scm?: Maybe<ConfigFileScm>;
   source: Scalars['JSONObject']['output'];
@@ -112,6 +110,7 @@ export type ConfigFileScm = {
 
 export type CreateSimulation = {
   branch?: InputMaybe<Scalars['String']['input']>;
+  configFileId?: InputMaybe<Scalars['ID']['input']>;
   end?: InputMaybe<Scalars['String']['input']>;
   namespace?: InputMaybe<Scalars['String']['input']>;
   organization?: InputMaybe<Scalars['String']['input']>;
@@ -125,6 +124,7 @@ export type CreateSimulationResult = CreateSimulationValidationError | Simulatio
 
 export type CreateSimulationValidationError = {
   __typename?: 'CreateSimulationValidationError';
+  branch?: Maybe<Array<Error>>;
   organization?: Maybe<Array<Error>>;
 };
 
@@ -162,6 +162,7 @@ export type FileSink = Sink & {
   completedAt?: Maybe<Scalars['DateTime']['output']>;
   id: Scalars['ID']['output'];
   importScriptUrl?: Maybe<Scalars['String']['output']>;
+  metadataUrl?: Maybe<Scalars['String']['output']>;
 };
 
 export type InsufficientPreviewVolumeError = Error & {
@@ -353,13 +354,13 @@ export type Simulation = {
   branch?: Maybe<Branch>;
   createdAt: Scalars['DateTime']['output'];
   createdBy: User;
-  end: Scalars['DateTime']['output'];
+  end?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   processingCompletedAt?: Maybe<Scalars['DateTime']['output']>;
   scenario?: Maybe<Scenario>;
-  seed: Scalars['Int']['output'];
+  seed?: Maybe<Scalars['Int']['output']>;
   sinks: Array<Sink>;
-  start: Scalars['DateTime']['output'];
+  start?: Maybe<Scalars['String']['output']>;
   volume?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -404,16 +405,16 @@ export type StreamOutput = {
 export type StreamReference = {
   __typename?: 'StreamReference';
   branch?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
   namespace?: Maybe<Scalars['String']['output']>;
-  stream: Scalars['String']['output'];
 };
 
 export type StreamSystem = {
   __typename?: 'StreamSystem';
   branch?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
   namespace?: Maybe<Scalars['String']['output']>;
   parameters: Array<StreamSystemParameter>;
-  system: Scalars['String']['output'];
 };
 
 export type StreamSystemParameter = {
