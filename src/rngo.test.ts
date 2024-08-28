@@ -42,7 +42,7 @@ describe('Rngo#upsertConfigFile', () => {
         },
       })
 
-    const result = await rngo.upsertConfigFile()
+    const result = await rngo.pushConfigFile()
     expect(result.ok).toBe(true)
 
     const configFile = result.unwrap()

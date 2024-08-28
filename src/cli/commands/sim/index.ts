@@ -59,7 +59,7 @@ export default class Run extends Command {
     const syncSpinner = ora('Syncing config').start()
 
     let configFileId: string | undefined = undefined
-    const syncConfigResult = await rngo.upsertConfigFile()
+    const syncConfigResult = await rngo.pushConfigFile()
 
     if (syncConfigResult.ok) {
       syncSpinner.succeed()
@@ -72,7 +72,7 @@ export default class Run extends Command {
 
     const runSpinner = ora('Running simulation').start()
 
-    const createSimulationResult = await rngo.createSimulation(
+    const createSimulationResult = await rngo.compileGlobalSimulation(
       undefined,
       configFileId,
       cmd.flags.scenario,
@@ -95,7 +95,7 @@ export default class Run extends Command {
       )
     }
 
-    const drainResult = await rngo.drainSimulationToFile(simulationId)
+    const drainResult = await rngo.runSimulationToFile(simulationId)
 
     let sink
 
