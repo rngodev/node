@@ -10,7 +10,7 @@ import { z } from 'zod'
 
 import * as rngoUtil from './util'
 import { gql } from './gql/gql'
-import { InsufficientPreviewVolumeError } from './gql/graphql'
+import { InsufficientPreviewVolumeError, DeviceType } from './gql/graphql'
 import { InitError, ValidJwtToken } from './util'
 
 const { Err, Ok } = TsResult
@@ -67,14 +67,22 @@ export type DeviceAuth = {
 
 export class Rngo {
   static async initiateDeviceAuth(options?: {
-    deviceType?: string
+    deviceType?: 'cli'
     apiUrl?: string
   }): Promise<Result<DeviceAuth, InitError>> {
     const apiUrlResult = rngoUtil.resolveApiUrl(options?.apiUrl)
 
     if (apiUrlResult.ok) {
+      let deviceType: DeviceType | undefined = undefined
+
+      if (options?.deviceType) {
+        deviceType = {
+          cli: DeviceType.Cli,
+        }[options.deviceType]
+      }
+
       const gqlClient = new GraphQLClient(apiUrlResult.val.toString())
-      const { authDevice } = await gqlClient.request(
+      const { initiateDeviceAuth } = await gqlClient.request(
         gql(/* GraphQL */ `
           mutation nodeInitiateDeviceAuth($input: InitiateDeviceAuth!) {
             initiateDeviceAuth(input: $input) {
@@ -86,25 +94,25 @@ export class Rngo {
         `),
         {
           input: {
-            deviceType: options?.deviceType,
+            deviceType,
           },
         }
       )
 
       return Ok({
-        userCode: authDevice.userCode,
-        verificationUrl: authDevice.verificationUrl,
+        userCode: initiateDeviceAuth.userCode,
+        verificationUrl: initiateDeviceAuth.verificationUrl,
         verify: async () => {
           const result = await gqlClient.request(
             gql(/* GraphQL */ `
-              query getVerifiedDeviceAuth($deviceCode: String!) {
+              query nodeGetVerifiedDeviceAuth($deviceCode: String!) {
                 verifiedDeviceAuth(deviceCode: $deviceCode) {
                   token
                 }
               }
             `),
             {
-              deviceCode: authDevice.deviceCode,
+              deviceCode: initiateDeviceAuth.deviceCode,
             }
           )
 
@@ -487,37 +495,36 @@ export class Rngo {
   async runSimulationToFile(
     simulationId: string
   ): Promise<Result<FileSink, SimulationError[]>> {
-    const { drainSimulationToFile: runSimulationToFile } =
-      await this.gqlClient.request(
-        gql(/* GraphQL */ `
-          mutation nodeRunSimulationToFile($input: RunSimulationToFile!) {
-            runSimulationToFile(input: $input) {
-              __typename
-              ... on FileSink {
-                id
-              }
-              ... on RunSimulationToFileValidationError {
-                simulationId {
-                  message
-                }
-              }
-              ... on InsufficientPreviewVolumeError {
-                message
-                availableMbs
-                requiredMbs
-              }
-              ... on Error {
+    const { runSimulationToFile } = await this.gqlClient.request(
+      gql(/* GraphQL */ `
+        mutation nodeRunSimulationToFile($input: RunSimulationToFile!) {
+          runSimulationToFile(input: $input) {
+            __typename
+            ... on FileSink {
+              id
+            }
+            ... on RunSimulationToFileValidationError {
+              simulationId {
                 message
               }
             }
+            ... on InsufficientPreviewVolumeError {
+              message
+              availableMbs
+              requiredMbs
+            }
+            ... on Error {
+              message
+            }
           }
-        `),
-        {
-          input: {
-            simulationId,
-          },
         }
-      )
+      `),
+      {
+        input: {
+          simulationId,
+        },
+      }
+    )
 
     if (runSimulationToFile.__typename == 'FileSink') {
       const completedSink = await rngoUtil.poll(async () => {

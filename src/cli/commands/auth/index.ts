@@ -32,7 +32,9 @@ export default class Login extends Command {
       this.exit(1)
     }
 
-    const deviceAuthResult = await Rngo.authDevice()
+    const deviceAuthResult = await Rngo.initiateDeviceAuth({
+      deviceType: 'cli',
+    })
 
     const deviceAuth = deviceAuthResult
       .mapErr((error) => {
