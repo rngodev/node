@@ -261,6 +261,49 @@ export class Rngo {
     return path.join(this.simulationsDir, simulationId)
   }
 
+  async compileLocalSimulation(args: {
+    branch?: string
+    scenario?: string
+    seed?: number
+    start?: string
+    end?: string
+  }): Promise<Result<string, string[]>> {
+    const { compileLocalSimulation } = await this.gqlClient.request(
+      gql(/* GraphQL */ `
+        mutation nodeCompileLocalSimulation($input: CompileLocalSimulation!) {
+          compileLocalSimulation(input: $input) {
+            __typename
+            ... on LocalSimulation {
+              id
+            }
+          }
+        }
+      `),
+      {
+        input: {
+          ...args,
+          source: this.configFileSource,
+        },
+      }
+    )
+
+    if (compileLocalSimulation.__typename == 'LocalSimulation') {
+      const compileErrors = await this.#getSimulationCompileErrors(
+        compileLocalSimulation.id
+      )
+
+      if (compileErrors) {
+        return Err(compileErrors)
+      } else {
+        return Ok(compileLocalSimulation.id)
+      }
+    } else {
+      throw new Error(
+        `Unhandled GraphQL error: ${JSON.stringify(compileLocalSimulation)}`
+      )
+    }
+  }
+
   /**
    * Idempotently inserts and / or update any systems, scenarios or streams
    * specified in the local config file to the rngo API. This should be called
@@ -360,7 +403,7 @@ export class Rngo {
     end?: string,
     streams?: string[]
   ): Promise<Result<string, string[]>> {
-    const { createSimulation } = await this.gqlClient.request(
+    const { compileGlobalSimulation } = await this.gqlClient.request(
       gql(/* GraphQL */ `
         mutation nodeCompileGlobalSimulation($input: CompileGlobalSimulation!) {
           compileGlobalSimulation(input: $input) {
@@ -383,49 +426,61 @@ export class Rngo {
       }
     )
 
-    if (createSimulation.__typename == 'Simulation') {
-      const compileResult = await rngoUtil.poll(async () => {
-        const { simulation } = await this.gqlClient.request(
-          gql(/* GraphQL */ `
-            query nodePollSimulation($id: String!) {
-              simulation(id: $id) {
-                compileResult {
-                  __typename
-                  ... on SimulationCompileFailure {
-                    errors {
-                      message
-                    }
+    if (compileGlobalSimulation.__typename == 'GlobalSimulation') {
+      const compileErrors = await this.#getSimulationCompileErrors(
+        compileGlobalSimulation.id
+      )
+
+      if (compileErrors) {
+        return Err(compileErrors)
+      } else {
+        return Ok(compileGlobalSimulation.id)
+      }
+    } else {
+      throw new Error(
+        `Unhandled GraphQL error: ${JSON.stringify(compileGlobalSimulation)}`
+      )
+    }
+  }
+
+  async #getSimulationCompileErrors(id: string): Promise<string[] | undefined> {
+    const compileResult = await rngoUtil.poll(async () => {
+      const { simulation } = await this.gqlClient.request(
+        gql(/* GraphQL */ `
+          query nodePollSimulation($id: String!) {
+            simulation(id: $id) {
+              compileResult {
+                __typename
+                ... on SimulationCompileFailure {
+                  errors {
+                    message
                   }
                 }
               }
             }
-          `),
-          {
-            id: createSimulation.id,
           }
-        )
-
-        if (simulation?.compileResult) {
-          return simulation.compileResult
+        `),
+        {
+          id,
         }
-      })
+      )
 
-      if (compileResult) {
-        if (compileResult.__typename == 'CompiledSimulation') {
-          return Ok(createSimulation.id)
-        } else {
-          const errors = compileResult.errors.map((error) => {
-            return error.message
-          })
-          return Err(errors)
-        }
+      if (simulation?.compileResult) {
+        return simulation.compileResult
+      }
+    })
+
+    if (compileResult) {
+      if (compileResult.__typename == 'CompiledSimulation') {
+        return undefined
       } else {
-        throw new Error(`Simulation processing timed out`)
+        const errors = compileResult.errors.map((error) => {
+          return error.message
+        })
+        return errors
       }
     } else {
-      throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(createSimulation)}`
-      )
+      throw new Error(`Simulation processing timed out`)
     }
   }
 
