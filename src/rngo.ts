@@ -10,10 +10,7 @@ import { z } from 'zod'
 
 import * as rngoUtil from './util'
 import { gql } from './gql/gql'
-import {
-  InsufficientPreviewVolumeError,
-  UpsertConfigFileScm,
-} from './gql/graphql'
+import { InsufficientPreviewVolumeError, DeviceType } from './gql/graphql'
 import { InitError, ValidJwtToken } from './util'
 
 const { Err, Ok } = TsResult
@@ -69,39 +66,53 @@ export type DeviceAuth = {
 }
 
 export class Rngo {
-  static async authDevice(options?: {
-    apiUrl: string
+  static async initiateDeviceAuth(options?: {
+    deviceType?: 'cli'
+    apiUrl?: string
   }): Promise<Result<DeviceAuth, InitError>> {
     const apiUrlResult = rngoUtil.resolveApiUrl(options?.apiUrl)
 
     if (apiUrlResult.ok) {
+      let deviceType: DeviceType | undefined = undefined
+
+      if (options?.deviceType) {
+        deviceType = {
+          cli: DeviceType.Cli,
+        }[options.deviceType]
+      }
+
       const gqlClient = new GraphQLClient(apiUrlResult.val.toString())
-      const { authDevice } = await gqlClient.request(
+      const { initiateDeviceAuth } = await gqlClient.request(
         gql(/* GraphQL */ `
-          mutation authDevice {
-            authDevice {
+          mutation nodeInitiateDeviceAuth($input: InitiateDeviceAuth!) {
+            initiateDeviceAuth(input: $input) {
               deviceCode
               userCode
               verificationUrl
             }
           }
-        `)
+        `),
+        {
+          input: {
+            deviceType,
+          },
+        }
       )
 
       return Ok({
-        userCode: authDevice.userCode,
-        verificationUrl: authDevice.verificationUrl,
+        userCode: initiateDeviceAuth.userCode,
+        verificationUrl: initiateDeviceAuth.verificationUrl,
         verify: async () => {
           const result = await gqlClient.request(
             gql(/* GraphQL */ `
-              query getVerifiedDeviceAuth($deviceCode: String!) {
+              query nodeGetVerifiedDeviceAuth($deviceCode: String!) {
                 verifiedDeviceAuth(deviceCode: $deviceCode) {
                   token
                 }
               }
             `),
             {
-              deviceCode: authDevice.deviceCode,
+              deviceCode: initiateDeviceAuth.deviceCode,
             }
           )
 
@@ -258,6 +269,49 @@ export class Rngo {
     return path.join(this.simulationsDir, simulationId)
   }
 
+  async compileLocalSimulation(args: {
+    branch?: string
+    scenario?: string
+    seed?: number
+    start?: string
+    end?: string
+  }): Promise<Result<string, string[]>> {
+    const { compileLocalSimulation } = await this.gqlClient.request(
+      gql(/* GraphQL */ `
+        mutation nodeCompileLocalSimulation($input: CompileLocalSimulation!) {
+          compileLocalSimulation(input: $input) {
+            __typename
+            ... on LocalSimulation {
+              id
+            }
+          }
+        }
+      `),
+      {
+        input: {
+          ...args,
+          configFileSource: this.configFileSource,
+        },
+      }
+    )
+
+    if (compileLocalSimulation.__typename == 'LocalSimulation') {
+      const compileErrors = await this.#getSimulationCompileErrors(
+        compileLocalSimulation.id
+      )
+
+      if (compileErrors) {
+        return Err(compileErrors)
+      } else {
+        return Ok(compileLocalSimulation.id)
+      }
+    } else {
+      throw new Error(
+        `Unhandled GraphQL error: ${JSON.stringify(compileLocalSimulation)}`
+      )
+    }
+  }
+
   /**
    * Idempotently inserts and / or update any systems, scenarios or streams
    * specified in the local config file to the rngo API. This should be called
@@ -266,32 +320,21 @@ export class Rngo {
    *
    * @returns The ID of the created config file resource.
    */
-  async upsertConfigFile(): Promise<Result<ConfigFile, ConfigFileError[]>> {
-    let gqlScm: UpsertConfigFileScm | undefined = undefined
+  async pushConfigFile(): Promise<Result<ConfigFile, ConfigFileError[]>> {
     const scmRepo = await rngoUtil.getScmRepo()
 
-    if (scmRepo) {
-      gqlScm = {
-        repo: scmRepo.name,
-        branch: scmRepo.branch,
-        parentCommit: scmRepo.commitHash,
-        filepath: this.configFilePath,
-      }
-    }
-
-    const { upsertConfigFile } = await this.gqlClient.request(
+    const { pushConfigFile } = await this.gqlClient.request(
       gql(/* GraphQL */ `
-        mutation upsertConfigFile($input: UpsertConfigFile!) {
-          upsertConfigFile(input: $input) {
+        mutation nodePushConfigFile($input: PushConfigFile!) {
+          pushConfigFile(input: $input) {
             __typename
             ... on ConfigFile {
               id
               branch {
                 name
               }
-              processingCompletedAt
             }
-            ... on UpsertConfigFileFailure {
+            ... on PushConfigFileFailure {
               config {
                 path
                 message
@@ -306,72 +349,82 @@ export class Rngo {
       {
         input: {
           source: this.configFileSource,
-          scm: gqlScm,
+          branch: scmRepo?.branch,
         },
       }
     )
 
-    if (upsertConfigFile.__typename == 'ConfigFile') {
-      const result = await rngoUtil.poll(async () => {
+    if (pushConfigFile.__typename == 'ConfigFile') {
+      const mergeResult = await rngoUtil.poll(async () => {
         const { configFile } = await this.gqlClient.request(
           gql(/* GraphQL */ `
-            query pollConfigFile($id: String!) {
+            query nodePollConfigFile($id: String!) {
               configFile(id: $id) {
-                processingCompletedAt
+                mergeResult {
+                  __typename
+                  ... on ConfigFileMergeFailure {
+                    errors {
+                      message
+                    }
+                  }
+                }
               }
             }
           `),
           {
-            id: upsertConfigFile.id,
+            id: pushConfigFile.id,
           }
         )
 
-        if (configFile?.processingCompletedAt) {
-          return true
+        if (configFile?.mergeResult) {
+          return configFile.mergeResult
         }
       })
 
-      if (result) {
-        return Ok({
-          id: upsertConfigFile.id,
-          branch: upsertConfigFile.branch?.name,
-        })
+      if (mergeResult) {
+        if (mergeResult.__typename == 'MergedConfigFile') {
+          return Ok({
+            id: pushConfigFile.id,
+            branch: pushConfigFile.branch?.name,
+          })
+        } else {
+          const configFileErrors = mergeResult.errors.map((error) => {
+            return { message: error.message, path: [] }
+          })
+          return Err(configFileErrors)
+        }
       } else {
         throw new Error(`Config file processing timed out`)
       }
-    } else if (upsertConfigFile.__typename == 'UpsertConfigFileFailure') {
-      return Err(upsertConfigFile.config || [])
+    } else if (pushConfigFile.__typename == 'PushConfigFileFailure') {
+      return Err(pushConfigFile.config || [])
     } else {
-      return Err([{ message: upsertConfigFile.message, path: [] }])
+      return Err([{ message: pushConfigFile.message, path: [] }])
     }
   }
 
-  async createSimulation(
+  async compileGlobalSimulation(
     branch?: string,
-    configFileId?: string,
     scenario?: string,
     seed?: number,
     start?: string,
     end?: string,
     streams?: string[]
   ): Promise<Result<string, string[]>> {
-    const { createSimulation } = await this.gqlClient.request(
+    const { compileGlobalSimulation } = await this.gqlClient.request(
       gql(/* GraphQL */ `
-        mutation createSimulation($input: CreateSimulation!) {
-          createSimulation(input: $input) {
+        mutation nodeCompileGlobalSimulation($input: CompileGlobalSimulation!) {
+          compileGlobalSimulation(input: $input) {
             __typename
-            ... on Simulation {
+            ... on GlobalSimulation {
               id
             }
           }
         }
       `),
       {
-        // TODO: 1. pass in spec name, once server knows about specs
-        // 2. overrides come from CLI args
         input: {
           branch,
-          configFileId,
           scenario,
           seed,
           start,
@@ -381,50 +434,76 @@ export class Rngo {
       }
     )
 
-    if (createSimulation.__typename == 'Simulation') {
-      const result = await rngoUtil.poll(async () => {
-        const { simulation } = await this.gqlClient.request(
-          gql(/* GraphQL */ `
-            query pollSimulation($id: String!) {
-              simulation(id: $id) {
-                processingCompletedAt
-              }
-            }
-          `),
-          {
-            id: createSimulation.id,
-          }
-        )
+    if (compileGlobalSimulation.__typename == 'GlobalSimulation') {
+      const compileErrors = await this.#getSimulationCompileErrors(
+        compileGlobalSimulation.id
+      )
 
-        if (simulation?.processingCompletedAt) {
-          return true
-        }
-      })
-
-      if (result) {
-        return Ok(createSimulation.id)
+      if (compileErrors) {
+        return Err(compileErrors)
       } else {
-        throw new Error(`Simulation processing timed out`)
+        return Ok(compileGlobalSimulation.id)
       }
     } else {
       throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(createSimulation)}`
+        `Unhandled GraphQL error: ${JSON.stringify(compileGlobalSimulation)}`
       )
     }
   }
 
-  async drainSimulationToFile(
+  async #getSimulationCompileErrors(id: string): Promise<string[] | undefined> {
+    const compileResult = await rngoUtil.poll(async () => {
+      const { simulation } = await this.gqlClient.request(
+        gql(/* GraphQL */ `
+          query nodePollSimulation($id: String!) {
+            simulation(id: $id) {
+              compileResult {
+                __typename
+                ... on SimulationCompileFailure {
+                  errors {
+                    message
+                  }
+                }
+              }
+            }
+          }
+        `),
+        {
+          id,
+        }
+      )
+
+      if (simulation?.compileResult) {
+        return simulation.compileResult
+      }
+    })
+
+    if (compileResult) {
+      if (compileResult.__typename == 'CompiledSimulation') {
+        return undefined
+      } else {
+        const errors = compileResult.errors.map((error) => {
+          return error.message
+        })
+        return errors
+      }
+    } else {
+      throw new Error(`Simulation processing timed out`)
+    }
+  }
+
+  async runSimulationToFile(
     simulationId: string
   ): Promise<Result<FileSink, SimulationError[]>> {
-    const { drainSimulationToFile } = await this.gqlClient.request(
+    const { runSimulationToFile } = await this.gqlClient.request(
       gql(/* GraphQL */ `
-        mutation drainSimulationToFile($input: DrainSimulationToFile!) {
-          drainSimulationToFile(input: $input) {
+        mutation nodeRunSimulationToFile($input: RunSimulationToFile!) {
+          runSimulationToFile(input: $input) {
             __typename
             ... on FileSink {
               id
             }
-            ... on DrainSimulationToFileValidationError {
+            ... on RunSimulationToFileValidationError {
               simulationId {
                 message
               }
@@ -447,11 +526,11 @@ export class Rngo {
       }
     )
 
-    if (drainSimulationToFile.__typename == 'FileSink') {
+    if (runSimulationToFile.__typename == 'FileSink') {
       const completedSink = await rngoUtil.poll(async () => {
         const { simulation } = await this.gqlClient.request(
           gql(/* GraphQL */ `
-            query pollSimulationSinks($id: String!) {
+            query nodePollSimulationSinks($id: String!) {
               simulation(id: $id) {
                 id
                 sinks {
@@ -475,7 +554,7 @@ export class Rngo {
 
         if (simulation?.sinks) {
           const sink = simulation?.sinks.find(
-            (sink) => sink.id === drainSimulationToFile.id
+            (sink) => sink.id === runSimulationToFile.id
           )
 
           if (sink?.completedAt) {
@@ -486,7 +565,7 @@ export class Rngo {
 
       if (completedSink) {
         return Ok({
-          id: drainSimulationToFile.id,
+          id: runSimulationToFile.id,
           simulationId: simulationId,
           importScriptUrl: completedSink.importScriptUrl || undefined,
           archives: completedSink.archives,
@@ -495,32 +574,31 @@ export class Rngo {
         throw new Error(`Drain simulation to file timed out`)
       }
     } else if (
-      drainSimulationToFile.__typename ===
-        'DrainSimulationToFileValidationError' &&
-      drainSimulationToFile.simulationId
+      runSimulationToFile.__typename === 'RunSimulationToFileValidationError' &&
+      runSimulationToFile.simulationId
     ) {
       return Err(
-        drainSimulationToFile.simulationId.map((e) => {
+        runSimulationToFile.simulationId.map((e) => {
           return { type: 'SimulationError', message: e.message }
         })
       )
     } else if (
-      drainSimulationToFile.__typename === 'InsufficientPreviewVolumeError'
+      runSimulationToFile.__typename === 'InsufficientPreviewVolumeError'
     ) {
-      const error = drainSimulationToFile as InsufficientPreviewVolumeError
+      const error = runSimulationToFile as InsufficientPreviewVolumeError
       return Err([
         {
           type: 'InsufficientPreviewVolume',
           ...error,
         },
       ])
-    } else if (drainSimulationToFile.__typename === 'CapacityError') {
+    } else if (runSimulationToFile.__typename === 'CapacityError') {
       return Err([
-        { type: 'SimulationError', message: drainSimulationToFile.message },
+        { type: 'SimulationError', message: runSimulationToFile.message },
       ])
     } else {
       throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(drainSimulationToFile)}`
+        `Unhandled GraphQL error: ${JSON.stringify(runSimulationToFile)}`
       )
     }
   }

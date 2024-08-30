@@ -20,15 +20,14 @@ describe('Rngo.init', () => {
   })
 })
 
-describe('Rngo#upsertConfigFile', () => {
+describe('Rngo#pushConfigFile', () => {
   test('success', async () => {
     const rngo = await validRngo()
-    const currentTime = new Date()
 
     jest
       .spyOn(rngo.gqlClient, 'request')
       .mockResolvedValueOnce({
-        upsertConfigFile: {
+        pushConfigFile: {
           __typename: 'ConfigFile',
           id: 'clse48vh2000a08l2h92rhyps',
           branch: {
@@ -38,11 +37,13 @@ describe('Rngo#upsertConfigFile', () => {
       })
       .mockResolvedValueOnce({
         configFile: {
-          processingCompletedAt: currentTime.toISOString(),
+          mergeResult: {
+            __typename: 'MergedConfigFile',
+          },
         },
       })
 
-    const result = await rngo.upsertConfigFile()
+    const result = await rngo.pushConfigFile()
     expect(result.ok).toBe(true)
 
     const configFile = result.unwrap()

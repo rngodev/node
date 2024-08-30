@@ -56,31 +56,14 @@ export default class Run extends Command {
 
     const rngo = await getRngoOrExit(this, cmd.flags)
 
-    const syncSpinner = ora('Syncing config').start()
-
-    let configFileId: string | undefined = undefined
-    const syncConfigResult = await rngo.upsertConfigFile()
-
-    if (syncConfigResult.ok) {
-      syncSpinner.succeed()
-      configFileId = syncConfigResult.val.id
-    } else {
-      syncSpinner.fail()
-      logUserErrors(this, syncConfigResult.val)
-      errorAndExit(this, 'ConfigInvalid', 'The config is invalid')
-    }
-
     const runSpinner = ora('Running simulation').start()
 
-    const createSimulationResult = await rngo.createSimulation(
-      undefined,
-      configFileId,
-      cmd.flags.scenario,
-      parsedSeed,
-      cmd.flags.start,
-      cmd.flags.end,
-      cmd.flags.streams
-    )
+    const createSimulationResult = await rngo.compileLocalSimulation({
+      scenario: cmd.flags.scenario,
+      seed: parsedSeed,
+      start: cmd.flags.start,
+      end: cmd.flags.end,
+    })
 
     let simulationId
 
@@ -95,17 +78,17 @@ export default class Run extends Command {
       )
     }
 
-    const drainResult = await rngo.drainSimulationToFile(simulationId)
+    const runSimulationResult = await rngo.runSimulationToFile(simulationId)
 
     let sink
 
-    if (drainResult.ok) {
+    if (runSimulationResult.ok) {
       runSpinner.succeed()
-      sink = drainResult.val
+      sink = runSimulationResult.val
     } else {
       runSpinner.fail()
 
-      const previewError = drainResult.val.find((error) => {
+      const previewError = runSimulationResult.val.find((error) => {
         return error.type === 'InsufficientPreviewVolume'
       })
 
@@ -129,7 +112,7 @@ To proceed, go to ${chalk.yellow.bold(
         errorAndExit(
           this,
           'UnhandledError',
-          `Unhandled error: ${drainResult.val}`
+          `Unhandled error: ${runSimulationResult.val}`
         )
       }
     }
