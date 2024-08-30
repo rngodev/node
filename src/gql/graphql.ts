@@ -108,10 +108,10 @@ export type CompileGlobalSimulationValidationError = {
 
 export type CompileLocalSimulation = {
   branch?: InputMaybe<Scalars['String']['input']>;
+  configFileSource: Scalars['JSONObject']['input'];
   end?: InputMaybe<Scalars['String']['input']>;
   scenario?: InputMaybe<Scalars['String']['input']>;
   seed?: InputMaybe<Scalars['Int']['input']>;
-  source: Scalars['JSONObject']['input'];
   start?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -120,10 +120,10 @@ export type CompileLocalSimulationResult = CompileLocalSimulationValidationError
 export type CompileLocalSimulationValidationError = {
   __typename?: 'CompileLocalSimulationValidationError';
   branch?: Maybe<Array<Error>>;
+  configFileSource?: Maybe<Array<Error>>;
   end?: Maybe<Array<Error>>;
   scenario?: Maybe<Array<Error>>;
   seed?: Maybe<Array<Error>>;
-  source?: Maybe<Array<Error>>;
   start?: Maybe<Array<Error>>;
 };
 

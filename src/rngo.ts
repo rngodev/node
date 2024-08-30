@@ -290,7 +290,7 @@ export class Rngo {
       {
         input: {
           ...args,
-          source: this.configFileSource,
+          configFileSource: this.configFileSource,
         },
       }
     )
