@@ -11,7 +11,12 @@ import { z } from 'zod'
 import * as rngoUtil from './util'
 import { gql } from './gql/gql'
 import { InsufficientPreviewVolumeError, DeviceType } from './gql/graphql'
-import { InitError, ValidJwtToken } from './util'
+import {
+  CompileSimulationError,
+  InitError,
+  ValidJwtToken,
+  buildJsonPointer,
+} from './util'
 
 const { Err, Ok } = TsResult
 
@@ -214,7 +219,7 @@ export class Rngo {
           result.error.issues.map((zodIssue) => {
             errors.push({
               code: 'invalidConfig',
-              path: zodIssue.path,
+              jsonPointer: buildJsonPointer(zodIssue.path),
               message: zodIssue.message,
             })
           })
@@ -275,14 +280,20 @@ export class Rngo {
     seed?: number
     start?: string
     end?: string
-  }): Promise<Result<string, string[]>> {
+  }): Promise<Result<string, CompileSimulationError[]>> {
     const { compileLocalSimulation } = await this.gqlClient.request(
       gql(/* GraphQL */ `
         mutation nodeCompileLocalSimulation($input: CompileLocalSimulation!) {
           compileLocalSimulation(input: $input) {
             __typename
-            ... on LocalSimulation {
+            ... on Simulation {
               id
+            }
+            ... on SimulationCompileFailure {
+              configFileSource {
+                jsonPointer
+                message
+              }
             }
           }
         }
@@ -295,7 +306,7 @@ export class Rngo {
       }
     )
 
-    if (compileLocalSimulation.__typename == 'LocalSimulation') {
+    if (compileLocalSimulation.__typename == 'Simulation') {
       const compileErrors = await this.#getSimulationCompileErrors(
         compileLocalSimulation.id
       )
@@ -306,9 +317,23 @@ export class Rngo {
         return Ok(compileLocalSimulation.id)
       }
     } else {
-      throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(compileLocalSimulation)}`
+      const issues = (compileLocalSimulation.configFileSource || []).map(
+        (issue) => {
+          return {
+            code: 'invalidConfig' as const,
+            jsonPointer: issue.jsonPointer,
+            message: issue.message,
+          }
+        }
       )
+
+      if (issues.length > 0) {
+        return Err(issues)
+      } else {
+        throw new Error(
+          `Unhandled GraphQL error: ${JSON.stringify(compileLocalSimulation)}`
+        )
+      }
     }
   }
 
@@ -410,13 +435,13 @@ export class Rngo {
     start?: string,
     end?: string,
     streams?: string[]
-  ): Promise<Result<string, string[]>> {
+  ): Promise<Result<string, CompileSimulationError[]>> {
     const { compileGlobalSimulation } = await this.gqlClient.request(
       gql(/* GraphQL */ `
         mutation nodeCompileGlobalSimulation($input: CompileGlobalSimulation!) {
           compileGlobalSimulation(input: $input) {
             __typename
-            ... on GlobalSimulation {
+            ... on Simulation {
               id
             }
           }
@@ -434,7 +459,7 @@ export class Rngo {
       }
     )
 
-    if (compileGlobalSimulation.__typename == 'GlobalSimulation') {
+    if (compileGlobalSimulation.__typename == 'Simulation') {
       const compileErrors = await this.#getSimulationCompileErrors(
         compileGlobalSimulation.id
       )
@@ -451,7 +476,9 @@ export class Rngo {
     }
   }
 
-  async #getSimulationCompileErrors(id: string): Promise<string[] | undefined> {
+  async #getSimulationCompileErrors(
+    id: string
+  ): Promise<CompileSimulationError[] | undefined> {
     const compileResult = await rngoUtil.poll(async () => {
       const { simulation } = await this.gqlClient.request(
         gql(/* GraphQL */ `
@@ -460,7 +487,7 @@ export class Rngo {
               compileResult {
                 __typename
                 ... on SimulationCompileFailure {
-                  errors {
+                  scenario {
                     message
                   }
                 }
@@ -482,10 +509,19 @@ export class Rngo {
       if (compileResult.__typename == 'CompiledSimulation') {
         return undefined
       } else {
-        const errors = compileResult.errors.map((error) => {
-          return error.message
-        })
-        return errors
+        const errors: CompileSimulationError[] = []
+
+        if (compileResult.scenario) {
+          compileResult.scenario.forEach((issue) => {
+            errors.push({
+              code: 'invalidCompileArg',
+              key: 'scenario',
+              message: issue.message,
+            })
+          })
+        }
+
+        return errors.length > 0 ? errors : undefined
       }
     } else {
       throw new Error(`Simulation processing timed out`)

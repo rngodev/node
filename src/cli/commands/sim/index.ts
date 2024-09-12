@@ -71,11 +71,19 @@ export default class Run extends Command {
       simulationId = createSimulationResult.val
     } else {
       runSpinner.fail()
-      errorAndExit(
+      logUserErrors(
         this,
-        'UnhandledError',
-        `Unhandled error: ${createSimulationResult.val}`
+        createSimulationResult.val.map((error) => {
+          if (error.code === 'invalidCompileArg') {
+            return {
+              message: `'${error.key}' flag: ${error.message}`,
+            }
+          } else {
+            return { message: error.message }
+          }
+        })
       )
+      return this.exit()
     }
 
     const runSimulationResult = await rngo.runSimulationToFile(simulationId)

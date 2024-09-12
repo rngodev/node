@@ -11,6 +11,18 @@ import { RngoOptions } from './rngo'
 
 const { Err, Ok } = TsResult
 
+export type InvalidConfigError = {
+  code: 'invalidConfig'
+  jsonPointer: string
+  message: string
+}
+
+export type InvalidCompileArgError = {
+  code: 'invalidCompileArg'
+  key: string
+  message: string
+}
+
 export type InitError =
   | {
       code: 'invalidOption'
@@ -22,11 +34,9 @@ export type InitError =
       key: keyof RngoOptions
       message: string
     }
-  | {
-      code: 'invalidConfig'
-      path: (string | number)[]
-      message: string
-    }
+  | InvalidConfigError
+
+export type CompileSimulationError = InvalidConfigError | InvalidCompileArgError
 
 export type ValidJwtToken = { token: string; expirationDate: Date }
 export type JwtTokenError = 'missing' | 'expired' | 'malformed'
@@ -238,4 +248,12 @@ export async function unzip(
       }
     })
   })
+}
+
+export function buildJsonPointer(path: (string | number)[]): string {
+  if (path.length === 0) {
+    return ''
+  } else {
+    return '/' + path.join('/')
+  }
 }
