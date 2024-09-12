@@ -74,7 +74,7 @@ export default class Run extends Command {
       logUserErrors(
         this,
         createSimulationResult.val.map((error) => {
-          if (error.code === 'invalidCompileArg') {
+          if (error.code === 'invalidArg') {
             return {
               message: `'${error.key}' flag: ${error.message}`,
             }
@@ -97,17 +97,17 @@ export default class Run extends Command {
       runSpinner.fail()
 
       const previewError = runSimulationResult.val.find((error) => {
-        return error.type === 'InsufficientPreviewVolume'
+        return error.code === 'insufficientVolume'
       })
 
       if (previewError) {
-        if (previewError.type === 'InsufficientPreviewVolume') {
+        if (previewError.code === 'insufficientVolume') {
           this.log()
           this.log(
             `You have ${chalk.bold(
-              `${previewError.availableMbs} ${previewError.availableMbs > 1 ? 'MBs' : 'MB'}`
+              `${previewError.availableVolume} ${previewError.availableVolume > 1 ? 'MBs' : 'MB'}`
             )} of preview volume available, but this simulation has a volume of ${chalk.bold(
-              `${previewError.requiredMbs} ${previewError.requiredMbs > 1 ? 'MBs' : 'MB'}`
+              `${previewError.requiredVolume} ${previewError.requiredVolume > 1 ? 'MBs' : 'MB'}`
             )}.
 To proceed, go to ${chalk.yellow.bold(
               'https://rngo.dev/settings'

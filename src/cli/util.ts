@@ -66,7 +66,7 @@ export async function getRngoOrExit(
       rngo = result.val
     } else {
       result.val.forEach((initError) => {
-        if (initError.code == 'invalidOption' && initError.key === 'apiToken') {
+        if (initError.code == 'invalidArg' && initError.key === 'apiToken') {
           errorAndExit(
             command,
             'SessionExpected',

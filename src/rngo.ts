@@ -12,8 +12,11 @@ import * as rngoUtil from './util'
 import { gql } from './gql/gql'
 import { InsufficientPreviewVolumeError, DeviceType } from './gql/graphql'
 import {
-  CompileSimulationError,
-  InitError,
+  GeneralError,
+  InsufficientVolumeError,
+  InvalidArgError,
+  InvalidConfigError,
+  MissingArgError,
   ValidJwtToken,
   buildJsonPointer,
 } from './util'
@@ -39,19 +42,6 @@ type ParsedRngoOptions = {
 }
 
 export type ConfigFile = { id: string; branch?: string }
-export type ConfigFileError = { path: string[]; message: string }
-
-export type SimulationError =
-  | {
-      type: 'InsufficientPreviewVolume'
-      message: string
-      requiredMbs: number
-      availableMbs: number
-    }
-  | {
-      type: 'SimulationError'
-      message: string
-    }
 
 export type NewSimulation = { id: string; defaultFileSinkId: string }
 
@@ -69,6 +59,19 @@ export type DeviceAuth = {
   verificationUrl: string
   verify: () => Promise<string | undefined>
 }
+
+export type InitError =
+  | InvalidArgError<keyof RngoOptions>
+  | MissingArgError<keyof RngoOptions>
+  | InvalidConfigError
+
+export type CompileSimulationError =
+  | InvalidConfigError
+  | InvalidArgError<'branch' | 'scenario'>
+
+export type RunSimulationError = InsufficientVolumeError | GeneralError
+
+export type PushConfigFileError = InvalidConfigError
 
 export class Rngo {
   static async initiateDeviceAuth(options?: {
@@ -163,14 +166,14 @@ export class Rngo {
       } else {
         const key = options.apiUrl ? 'apiToken' : 'RNGO_API_TOKEN'
         errors.push({
-          code: 'invalidOption',
+          code: 'invalidArg',
           key: 'apiToken',
           message: `${key} is ${result.val}`,
         })
       }
     } else {
       errors.push({
-        code: 'missingOption',
+        code: 'missingArg',
         key: 'apiToken',
         message: `Neither apiToken nor RNGO_API_TOKEN was specified`,
       })
@@ -181,7 +184,7 @@ export class Rngo {
       !rngoUtil.fileExists(options.configFilePath)
     ) {
       errors.push({
-        code: 'invalidOption',
+        code: 'invalidArg',
         key: 'configFilePath',
         message: `configPath '${options.configFilePath}' not found`,
       })
@@ -204,7 +207,7 @@ export class Rngo {
           : `Error parsing YAML at default config file path '${configFilePath}': ${error}`
 
         errors.push({
-          code: 'invalidOption',
+          code: 'invalidArg',
           key: 'configFilePath',
           message,
         })
@@ -345,7 +348,7 @@ export class Rngo {
    *
    * @returns The ID of the created config file resource.
    */
-  async pushConfigFile(): Promise<Result<ConfigFile, ConfigFileError[]>> {
+  async pushConfigFile(): Promise<Result<ConfigFile, PushConfigFileError[]>> {
     const scmRepo = await rngoUtil.getScmRepo()
 
     const { pushConfigFile } = await this.gqlClient.request(
@@ -414,7 +417,11 @@ export class Rngo {
           })
         } else {
           const configFileErrors = mergeResult.errors.map((error) => {
-            return { message: error.message, path: [] }
+            return {
+              code: 'invalidConfig' as const,
+              message: error.message,
+              jsonPointer: '',
+            }
           })
           return Err(configFileErrors)
         }
@@ -424,7 +431,13 @@ export class Rngo {
     } else if (pushConfigFile.__typename == 'PushConfigFileFailure') {
       return Err(pushConfigFile.config || [])
     } else {
-      return Err([{ message: pushConfigFile.message, path: [] }])
+      return Err([
+        {
+          code: 'invalidConfig' as const,
+          message: pushConfigFile.message,
+          jsonPointer: '',
+        },
+      ])
     }
   }
 
@@ -514,7 +527,7 @@ export class Rngo {
         if (compileResult.scenario) {
           compileResult.scenario.forEach((issue) => {
             errors.push({
-              code: 'invalidCompileArg',
+              code: 'invalidArg',
               key: 'scenario',
               message: issue.message,
             })
@@ -530,7 +543,7 @@ export class Rngo {
 
   async runSimulationToFile(
     simulationId: string
-  ): Promise<Result<FileSink, SimulationError[]>> {
+  ): Promise<Result<FileSink, RunSimulationError[]>> {
     const { runSimulationToFile } = await this.gqlClient.request(
       gql(/* GraphQL */ `
         mutation nodeRunSimulationToFile($input: RunSimulationToFile!) {
@@ -615,7 +628,7 @@ export class Rngo {
     ) {
       return Err(
         runSimulationToFile.simulationId.map((e) => {
-          return { type: 'SimulationError', message: e.message }
+          return { code: 'general', message: e.message }
         })
       )
     } else if (
@@ -624,14 +637,13 @@ export class Rngo {
       const error = runSimulationToFile as InsufficientPreviewVolumeError
       return Err([
         {
-          type: 'InsufficientPreviewVolume',
-          ...error,
+          code: 'insufficientVolume',
+          requiredVolume: error.requiredMbs,
+          availableVolume: error.availableMbs,
         },
       ])
     } else if (runSimulationToFile.__typename === 'CapacityError') {
-      return Err([
-        { type: 'SimulationError', message: runSimulationToFile.message },
-      ])
+      return Err([{ code: 'general', message: runSimulationToFile.message }])
     } else {
       throw new Error(
         `Unhandled GraphQL error: ${JSON.stringify(runSimulationToFile)}`

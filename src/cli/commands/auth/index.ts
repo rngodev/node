@@ -38,7 +38,7 @@ export default class Login extends Command {
 
     const deviceAuth = deviceAuthResult
       .mapErr((error) => {
-        if (error.code === 'invalidOption') {
+        if (error.code === 'invalidArg') {
           errorAndExit(this, 'RngoInitFailed', error.message)
         }
       })

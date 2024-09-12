@@ -7,9 +7,12 @@ import simpleGit, { SimpleGit } from 'simple-git'
 import TsResult, { Result } from 'ts-results'
 import yauzl from 'yauzl'
 
-import { RngoOptions } from './rngo'
-
 const { Err, Ok } = TsResult
+
+export type GeneralError = {
+  code: 'general'
+  message: string
+}
 
 export type InvalidConfigError = {
   code: 'invalidConfig'
@@ -17,33 +20,30 @@ export type InvalidConfigError = {
   message: string
 }
 
-export type InvalidCompileArgError = {
-  code: 'invalidCompileArg'
-  key: string
+export type InvalidArgError<K extends string> = {
+  code: 'invalidArg'
+  key: K
   message: string
 }
 
-export type InitError =
-  | {
-      code: 'invalidOption'
-      key: keyof RngoOptions
-      message: string
-    }
-  | {
-      code: 'missingOption'
-      key: keyof RngoOptions
-      message: string
-    }
-  | InvalidConfigError
+export type MissingArgError<K extends string> = {
+  code: 'missingArg'
+  key: K
+  message: string
+}
 
-export type CompileSimulationError = InvalidConfigError | InvalidCompileArgError
+export type InsufficientVolumeError = {
+  code: 'insufficientVolume'
+  requiredVolume: number
+  availableVolume: number
+}
 
 export type ValidJwtToken = { token: string; expirationDate: Date }
 export type JwtTokenError = 'missing' | 'expired' | 'malformed'
 
 export function resolveApiUrl(
   apiUrl: string | undefined
-): Result<URL, InitError> {
+): Result<URL, InvalidArgError<'apiUrl'>> {
   let rawUrl = apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev'
 
   if (!rawUrl.endsWith('/graphql')) {
@@ -55,7 +55,7 @@ export function resolveApiUrl(
   } catch (error) {
     const key = apiUrl ? 'apiUrl' : 'RNGO_API_URL'
     return Err({
-      code: 'invalidOption',
+      code: 'invalidArg',
       key: 'apiUrl',
       message: `Error parsing ${key} value '${rawUrl}': ${error}`,
     })
