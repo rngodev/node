@@ -8,10 +8,19 @@ import {
   updateConfig,
 } from '@cli/config'
 import { inferConfigFromSystem, inferFunctionForSystem } from '@cli/systems'
-import { getConfigOrExit, getRngoOrExit, printErrorAndExit } from '@cli/util'
+import {
+  getConfigOrExit,
+  getRngoOrExit,
+  printCaughtError,
+  printErrorAndExit,
+} from '@cli/util'
 
 export default class Infer extends Command {
   static summary = 'Infer configuration.'
+
+  async catch(error: unknown) {
+    printCaughtError(this, error)
+  }
 
   public async run(): Promise<void> {
     const rngo = await getRngoOrExit(this)

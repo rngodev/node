@@ -6,9 +6,14 @@ import path from 'path'
 
 import * as rngoUtil from '@util'
 import { Rngo } from '@main'
+import { printCaughtError } from '@src/cli/util'
 
 export default class Init extends Command {
   static description = 'Initialize this repo for rngo'
+
+  async catch(error: unknown) {
+    printCaughtError(this, error)
+  }
 
   async run() {
     const configFilePath = Rngo.defaultConfigFilePath()

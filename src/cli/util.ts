@@ -1,4 +1,4 @@
-import { Command } from '@oclif/core'
+import { Command, Errors } from '@oclif/core'
 import chalk from 'chalk'
 import { promises as fs } from 'fs'
 import { homedir } from 'os'
@@ -117,12 +117,15 @@ export async function getConfigOrExit(
   return config!
 }
 
+export function printCaughtError(command: Command, error: unknown): void {
+  if (error instanceof Errors.CLIError) {
+    command.log(error.message)
+  }
+}
+
 export function printMessageAndExit(command: Command, message: string): never {
-  command.log()
   command.log(message)
-  command.log()
-  command.exit(1)
-  throw Error()
+  process.exit(1)
 }
 
 type PrintableError =
@@ -137,20 +140,16 @@ export function printErrorAndExit(
   errors: PrintableError[]
 ): never {
   if (errors.length > 1) {
-    command.log()
     command.log(chalk.red.bold(pluralize('error', errors.length, true)))
 
     errors.forEach((error) => {
       command.log(`  ${formatError(error)}`)
     })
   } else if (errors.length === 1) {
-    command.log()
     command.log(formatError(errors[0]))
   }
 
-  command.log()
-  command.exit(1)
-  throw Error()
+  process.exit(1)
 }
 
 function formatError(error: PrintableError): string {

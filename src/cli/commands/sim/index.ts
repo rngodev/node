@@ -3,17 +3,13 @@ import chalk from 'chalk'
 import ora from 'ora'
 import z from 'zod'
 
-import { getRngoOrExit, printErrorAndExit } from '@cli/util'
+import { getRngoOrExit, printCaughtError, printErrorAndExit } from '@cli/util'
 
 export default class Run extends Command {
   static summary = 'Run a new simulation and download the data.'
 
   async catch(error: unknown) {
-    if (error instanceof Errors.CLIError) {
-      this.log()
-      this.log(error.message)
-      this.log()
-    }
+    printCaughtError(this, error)
   }
 
   static flags = {
