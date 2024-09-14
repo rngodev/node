@@ -12,6 +12,7 @@ import { Rngo } from '@main'
 
 import { LocalConfig, LocalConfigSchema } from '@cli/config'
 import { InferError } from './systems'
+import { ClientError } from 'graphql-request'
 
 export function getGlobalConfigPath() {
   return path.join(homedir(), '.rngo', 'config.yml')
@@ -118,9 +119,17 @@ export async function getConfigOrExit(
 }
 
 export function printCaughtError(command: Command, error: unknown): void {
+  command.logToStderr()
+
   if (error instanceof Errors.CLIError) {
-    command.log(error.message)
+    command.logToStderr(error.message)
+  } else if (error instanceof ClientError) {
+    command.logToStderr(chalk.red('Unexpected error returned from API.'))
+  } else if (error instanceof Error) {
+    command.logToStderr(chalk.red('Unexpected error occurred'))
   }
+
+  command.exit()
 }
 
 export function printMessageAndExit(command: Command, message: string): never {
