@@ -73,7 +73,7 @@ export async function getRngoOrExit(
               'rngo auth'
             )}`
           )
-        } else if (initError.code === 'invalidConfig') {
+        } else if (initError.code === 'invalidArg') {
           printMessageAndExit(command, 'Unable to initiate rngo')
         }
       })

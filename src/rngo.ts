@@ -181,7 +181,7 @@ export class Rngo {
 
     if (
       options.configFilePath &&
-      !rngoUtil.fileExists(options.configFilePath)
+      !(await rngoUtil.fileExists(options.configFilePath))
     ) {
       errors.push({
         code: 'invalidArg',
