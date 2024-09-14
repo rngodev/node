@@ -8,7 +8,7 @@ import {
   updateConfig,
 } from '@cli/config'
 import { inferConfigFromSystem, inferFunctionForSystem } from '@cli/systems'
-import { getConfigOrExit, getRngoOrExit, logUserErrors } from '@cli/util'
+import { getConfigOrExit, getRngoOrExit, printErrorAndExit } from '@cli/util'
 
 export default class Infer extends Command {
   static summary = 'Infer configuration.'
@@ -37,8 +37,8 @@ export default class Infer extends Command {
             systems[systemName] = result.val
           } else {
             spinner.fail()
-            logUserErrors(this, result.val)
-            this.exit()
+
+            printErrorAndExit(this, result.val)
           }
         }
       }

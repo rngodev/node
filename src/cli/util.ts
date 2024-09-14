@@ -11,7 +11,7 @@ import * as rngoUtil from '@util'
 import { Rngo } from '@main'
 
 import { LocalConfig, LocalConfigSchema } from '@cli/config'
-import { CliError, ErrorCode, arrayToJsonPath } from '@cli/error'
+import { InferError } from './systems'
 
 export function getGlobalConfigPath() {
   return path.join(homedir(), '.rngo', 'config.yml')
@@ -67,22 +67,20 @@ export async function getRngoOrExit(
     } else {
       result.val.forEach((initError) => {
         if (initError.code == 'invalidArg' && initError.key === 'apiToken') {
-          errorAndExit(
+          printMessageAndExit(
             command,
-            'SessionExpected',
             `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
               'rngo auth'
             )}`
           )
         } else if (initError.code === 'invalidConfig') {
-          errorAndExit(command, 'RngoInitFailed', 'Unable to initiate rngo')
+          printMessageAndExit(command, 'Unable to initiate rngo')
         }
       })
     }
   } else {
-    errorAndExit(
+    printMessageAndExit(
       command,
-      'SessionExpected',
       `To get started, first log into the rngo API by running: ${chalk.yellow.bold(
         'rngo auth'
       )}`
@@ -96,7 +94,7 @@ export async function getConfigOrExit(
   command: Command,
   rngo: Rngo
 ): Promise<LocalConfig> {
-  let errors: CliError[] = []
+  let errors: rngoUtil.GeneralError[] = []
   let config: LocalConfig
   const narrowResult = LocalConfigSchema.safeParse(rngo.configFileSource)
 
@@ -105,6 +103,7 @@ export async function getConfigOrExit(
   } else {
     errors = narrowResult.error.issues.map((zodIssue) => {
       return {
+        code: 'general',
         message: zodIssue.message,
         path: zodIssue.path,
       }
@@ -112,38 +111,58 @@ export async function getConfigOrExit(
   }
 
   if (errors.length > 0) {
-    logUserErrors(command, errors)
-    errorAndExit(command, 'ConfigInvalid', 'Config is invalid')
+    printErrorAndExit(command, errors)
   }
 
   return config!
 }
 
-export function errorAndExit(
-  command: Command,
-  code: ErrorCode,
-  message: string,
-  suggestions?: string[]
-): never {
-  return command.error(message, {
-    code,
-    suggestions,
-    exit: 1,
-    ref: `https://rngo.dev/cliErrors#${code}`,
-  })
+export function printMessageAndExit(command: Command, message: string): never {
+  command.log()
+  command.log(message)
+  command.log()
+  command.exit(1)
+  throw Error()
 }
 
-export function logUserErrors(command: Command, errors: CliError[]) {
-  command.log()
-  command.log(chalk.red.bold(pluralize('error', errors.length, true)))
-  command.log()
+type PrintableError =
+  | rngoUtil.GeneralError
+  | rngoUtil.InvalidArgError<string>
+  | rngoUtil.MissingArgError<string>
+  | rngoUtil.InvalidConfigError
+  | InferError
 
-  errors.forEach((e) => {
-    if (e.path) {
-      const path = e.path.length > 0 ? arrayToJsonPath(e.path) : 'top-level'
-      command.log(chalk.dim(`[${path}]`))
-    }
-    command.log(e.message)
+export function printErrorAndExit(
+  command: Command,
+  errors: PrintableError[]
+): never {
+  if (errors.length > 1) {
     command.log()
-  })
+    command.log(chalk.red.bold(pluralize('error', errors.length, true)))
+
+    errors.forEach((error) => {
+      command.log(`  ${formatError(error)}`)
+    })
+  } else if (errors.length === 1) {
+    command.log()
+    command.log(formatError(errors[0]))
+  }
+
+  command.log()
+  command.exit(1)
+  throw Error()
+}
+
+function formatError(error: PrintableError): string {
+  let prefix: string | undefined = undefined
+
+  if (error.code === 'invalidArg') {
+    prefix = `'${error.key}' flag`
+  }
+
+  if (prefix) {
+    return `${chalk.dim(prefix)}: ${error.message}`
+  } else {
+    return error.message
+  }
 }

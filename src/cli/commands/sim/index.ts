@@ -1,12 +1,20 @@
-import { Command, Flags } from '@oclif/core'
+import { Command, Flags, Errors } from '@oclif/core'
 import chalk from 'chalk'
 import ora from 'ora'
 import z from 'zod'
 
-import { errorAndExit, getRngoOrExit, logUserErrors } from '@cli/util'
+import { getRngoOrExit, printErrorAndExit } from '@cli/util'
 
 export default class Run extends Command {
   static summary = 'Run a new simulation and download the data.'
+
+  async catch(error: unknown) {
+    if (error instanceof Errors.CLIError) {
+      this.log()
+      this.log(error.message)
+      this.log()
+    }
+  }
 
   static flags = {
     config: Flags.string({
@@ -51,7 +59,13 @@ export default class Run extends Command {
     if (seedResult.success) {
       parsedSeed = seedResult.data
     } else {
-      errorAndExit(this, 'FlagInvalid', 'seed must be a positive integer')
+      printErrorAndExit(this, [
+        {
+          code: 'invalidArg',
+          key: 'seed',
+          message: 'seed must be a positive integer',
+        },
+      ])
     }
 
     const rngo = await getRngoOrExit(this, cmd.flags)
@@ -71,19 +85,7 @@ export default class Run extends Command {
       simulationId = createSimulationResult.val
     } else {
       runSpinner.fail()
-      logUserErrors(
-        this,
-        createSimulationResult.val.map((error) => {
-          if (error.code === 'invalidArg') {
-            return {
-              message: `'${error.key}' flag: ${error.message}`,
-            }
-          } else {
-            return { message: error.message }
-          }
-        })
-      )
-      return this.exit()
+      printErrorAndExit(this, createSimulationResult.val)
     }
 
     const runSimulationResult = await rngo.runSimulationToFile(simulationId)
@@ -117,10 +119,15 @@ To proceed, go to ${chalk.yellow.bold(
 
         return this.exit()
       } else {
-        errorAndExit(
+        printErrorAndExit(
           this,
-          'UnhandledError',
-          `Unhandled error: ${runSimulationResult.val}`
+          runSimulationResult.val.flatMap((error) => {
+            if (error.code === 'general') {
+              return [{ code: 'general', message: error.message }]
+            } else {
+              return []
+            }
+          })
         )
       }
     }

@@ -10,8 +10,9 @@ import { Rngo } from '@main'
 import { parseJwtToken } from '@src/util'
 
 import {
-  errorAndExit,
   getGlobalConfig,
+  printMessageAndExit,
+  printErrorAndExit,
   setTokenInGlobalConfig,
 } from '@cli/util'
 
@@ -38,9 +39,7 @@ export default class Login extends Command {
 
     const deviceAuth = deviceAuthResult
       .mapErr((error) => {
-        if (error.code === 'invalidArg') {
-          errorAndExit(this, 'RngoInitFailed', error.message)
-        }
+        printErrorAndExit(this, [error])
       })
       .unwrap()
 
@@ -75,8 +74,7 @@ export default class Login extends Command {
     if (token) {
       await setTokenInGlobalConfig(token)
     } else {
-      this.log()
-      errorAndExit(this, 'LoginFailed', 'Login failed')
+      printMessageAndExit(this, 'Login failed')
     }
   }
 }

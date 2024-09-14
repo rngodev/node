@@ -35,7 +35,10 @@ export function buildParameters(
 
   const database = getParam('database')
   if (!database) {
-    errors.push({ message: 'Could not resolve parameter database' })
+    errors.push({
+      code: 'infer',
+      message: 'Could not resolve parameter database',
+    })
   }
 
   const port = getParam('port')
@@ -44,7 +47,7 @@ export function buildParameters(
   if (portResult.success) {
     parsedPort = portResult.data
   } else {
-    errors.push({ message: 'Parameter port is not an integer' })
+    errors.push({ code: 'infer', message: 'Parameter port is not an integer' })
   }
 
   if (errors.length > 0) {
