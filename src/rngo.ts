@@ -186,13 +186,14 @@ export class Rngo {
       errors.push({
         code: 'invalidArg',
         key: 'configFilePath',
-        message: `configPath '${options.configFilePath}' not found`,
+        message: `configFilePath '${options.configFilePath}' not found`,
       })
     }
 
-    let directory = options.directory || this.defaultDirectoryPath()
-    let configFilePath =
+    const directory = options.directory || this.defaultDirectoryPath()
+    const configFilePath =
       options.configFilePath || this.defaultConfigFilePath(directory)
+    const relativePath = path.relative(path.dirname(directory), configFilePath)
     let config: ConfigFileSource
 
     if (await rngoUtil.fileExists(configFilePath)) {
@@ -203,8 +204,8 @@ export class Rngo {
         yaml = YAML.parse(source!, { intAsBigInt: true })
       } catch (error) {
         const message = options.configFilePath
-          ? `Error parsing YAML at configFilePath '${configFilePath}': ${error}`
-          : `Error parsing YAML at default config file path '${configFilePath}': ${error}`
+          ? `Error parsing YAML at configFilePath '${relativePath}': ${error}`
+          : `Error parsing YAML at default config file path '${relativePath}': ${error}`
 
         errors.push({
           code: 'invalidArg',
@@ -228,6 +229,12 @@ export class Rngo {
           })
         }
       }
+    } else if (options.configFilePath === undefined) {
+      errors.push({
+        code: 'missingArg',
+        key: 'configFilePath',
+        message: `configFilePath not specified and default path '${relativePath}' not found`,
+      })
     }
 
     if (errors.length > 0) {

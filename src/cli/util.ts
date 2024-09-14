@@ -55,7 +55,6 @@ export async function getRngoOrExit(
   flags?: { config?: string }
 ): Promise<Rngo> {
   const globalConfig = await getGlobalConfig()
-  let rngo: Rngo
 
   if (globalConfig.token) {
     const result = await Rngo.init({
@@ -64,20 +63,9 @@ export async function getRngoOrExit(
     })
 
     if (result.ok) {
-      rngo = result.val
+      return result.val
     } else {
-      result.val.forEach((initError) => {
-        if (initError.code == 'invalidArg' && initError.key === 'apiToken') {
-          printMessageAndExit(
-            command,
-            `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
-              'rngo auth'
-            )}`
-          )
-        } else if (initError.code === 'invalidArg') {
-          printMessageAndExit(command, 'Unable to initiate rngo')
-        }
-      })
+      printErrorAndExit(command, result.val)
     }
   } else {
     printMessageAndExit(
@@ -87,8 +75,6 @@ export async function getRngoOrExit(
       )}`
     )
   }
-
-  return rngo!
 }
 
 export async function getConfigOrExit(
@@ -119,8 +105,6 @@ export async function getConfigOrExit(
 }
 
 export function printCaughtError(command: Command, error: unknown): void {
-  command.logToStderr()
-
   if (error instanceof Errors.CLIError) {
     command.logToStderr(error.message)
   } else if (error instanceof ClientError) {
@@ -165,11 +149,19 @@ function formatError(error: PrintableError): string {
   let prefix: string | undefined = undefined
 
   if (error.code === 'invalidArg') {
+    if (error.key === 'apiToken') {
+      return `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
+        'rngo auth'
+      )}`
+    }
+
+    prefix = `'${error.key}' flag`
+  } else if (error.code === 'missingArg') {
     prefix = `'${error.key}' flag`
   }
 
   if (prefix) {
-    return `${chalk.dim(prefix)}: ${error.message}`
+    return `${chalk.bold.yellow(prefix)}: ${error.message}`
   } else {
     return error.message
   }
