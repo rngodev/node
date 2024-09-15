@@ -99,13 +99,7 @@ export type CompileGlobalSimulation = {
   streams?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
-export type CompileGlobalSimulationResult = CompileGlobalSimulationValidationError | Simulation;
-
-export type CompileGlobalSimulationValidationError = {
-  __typename?: 'CompileGlobalSimulationValidationError';
-  branch?: Maybe<Array<Error>>;
-  organization?: Maybe<Array<Error>>;
-};
+export type CompileGlobalSimulationResult = Simulation | SimulationCompileFailure;
 
 export type CompileLocalSimulation = {
   branch?: InputMaybe<Scalars['String']['input']>;
@@ -456,8 +450,10 @@ export type Simulation = {
 
 export type SimulationCompileFailure = {
   __typename?: 'SimulationCompileFailure';
+  branch?: Maybe<Array<Issue>>;
   configFileSource?: Maybe<Array<JsonObjectIssue>>;
   end?: Maybe<Array<Issue>>;
+  organization?: Maybe<Array<Issue>>;
   scenario?: Maybe<Array<Issue>>;
   start?: Maybe<Array<Issue>>;
 };
@@ -617,7 +613,7 @@ export type NodeCompileGlobalSimulationMutationVariables = Exact<{
 }>;
 
 
-export type NodeCompileGlobalSimulationMutation = { __typename?: 'Mutation', compileGlobalSimulation: { __typename: 'CompileGlobalSimulationValidationError' } | { __typename: 'Simulation', id: string } };
+export type NodeCompileGlobalSimulationMutation = { __typename?: 'Mutation', compileGlobalSimulation: { __typename: 'Simulation', id: string } | { __typename: 'SimulationCompileFailure' } };
 
 export type NodePollSimulationQueryVariables = Exact<{
   id: Scalars['String']['input'];
