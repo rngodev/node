@@ -1,15 +1,20 @@
 import { Command, Flags } from '@oclif/core'
 import chalk from 'chalk'
-import ora from 'ora'
+import ora, { Ora } from 'ora'
 import z from 'zod'
 
-import { getRngoOrExit, printCaughtError, printErrorAndExit } from '@cli/util'
+import {
+  failSpinners,
+  getRngoOrExit,
+  printCaughtError,
+  printErrorAndExit,
+} from '@cli/util'
 
 export default class Run extends Command {
   static summary = 'Run a new simulation and download the data.'
 
   async catch(error: unknown) {
-    this.failSpinners()
+    failSpinners(this, this.spinners)
     printCaughtError(this, error)
   }
 
@@ -42,24 +47,10 @@ export default class Run extends Command {
     }),
   }
 
-  runSpinner = ora('Running simulation')
-  downloadSpinner = ora('Downloading data')
-  importSpinner = ora('Importing data')
-
-  failSpinners() {
-    if (this.runSpinner.isSpinning) {
-      this.runSpinner.fail()
-    }
-
-    if (this.downloadSpinner.isSpinning) {
-      this.downloadSpinner.fail()
-    }
-
-    if (this.importSpinner.isSpinning) {
-      this.importSpinner.fail()
-    }
-
-    this.log()
+  spinners = {
+    run: ora('Running simulation'),
+    download: ora('Downloading data'),
+    import: ora('Importing data'),
   }
 
   public async run(): Promise<void> {
@@ -87,7 +78,7 @@ export default class Run extends Command {
 
     const rngo = await getRngoOrExit(this, cmd.flags)
 
-    this.runSpinner.start()
+    this.spinners.run.start()
 
     const createSimulationResult = await rngo.compileLocalSimulation({
       scenario: cmd.flags.scenario,
@@ -101,7 +92,7 @@ export default class Run extends Command {
     if (createSimulationResult.ok) {
       simulationId = createSimulationResult.val
     } else {
-      this.failSpinners()
+      failSpinners(this, this.spinners)
       printErrorAndExit(this, createSimulationResult.val)
     }
 
@@ -110,10 +101,10 @@ export default class Run extends Command {
     let sink
 
     if (runSimulationResult.ok) {
-      this.runSpinner.succeed()
+      this.spinners.run.succeed()
       sink = runSimulationResult.val
     } else {
-      this.failSpinners()
+      failSpinners(this, this.spinners)
 
       const previewError = runSimulationResult.val.find((error) => {
         return error.code === 'insufficientVolume'
@@ -149,14 +140,14 @@ To proceed, go to ${chalk.yellow.bold(
       }
     }
 
-    this.downloadSpinner.start()
+    this.spinners.download.start()
     await rngo.downloadFileSink(simulationId, sink)
-    this.downloadSpinner.succeed()
+    this.spinners.download.succeed()
 
     if (sink.importScriptUrl) {
-      this.importSpinner.start()
+      this.spinners.import.start()
       await rngo.importSimulation(simulationId)
-      this.importSpinner.succeed()
+      this.spinners.import.succeed()
     }
   }
 }

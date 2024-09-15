@@ -1,6 +1,6 @@
 import { Command } from '@oclif/core'
 import chalk from 'chalk'
-import ora from 'ora'
+import ora, { Ora } from 'ora'
 
 import {
   LocalConfig,
@@ -9,6 +9,7 @@ import {
 } from '@cli/config'
 import { inferConfigFromSystem, inferFunctionForSystem } from '@cli/systems'
 import {
+  failSpinners,
   getConfigOrExit,
   getRngoOrExit,
   printCaughtError,
@@ -19,8 +20,11 @@ export default class Infer extends Command {
   static summary = 'Infer configuration.'
 
   async catch(error: unknown) {
+    failSpinners(this, this.spinners)
     printCaughtError(this, error)
   }
+
+  spinners: Record<string, Ora> = {}
 
   public async run(): Promise<void> {
     const rngo = await getRngoOrExit(this)
@@ -30,10 +34,13 @@ export default class Infer extends Command {
       const systems: Record<string, LocalConfig> = {}
 
       for (const [systemName, system] of Object.entries(config.systems)) {
-        const spinner = ora(`Analyzing ${systemName}`).start()
+        this.spinners[`analyze${systemName}`] = ora(`Analyzing ${systemName}`)
+        this.spinners[`analyze${systemName}`].start()
 
         if (!inferFunctionForSystem(system)) {
-          spinner.warn(`No inference script found for ${systemName}`)
+          this.spinners[`analyze${systemName}`].warn(
+            `No inference script found for ${systemName}`
+          )
         } else {
           const result = await inferConfigFromSystem(
             systemName,
@@ -42,17 +49,19 @@ export default class Infer extends Command {
           )
 
           if (result.ok) {
-            spinner.succeed()
+            this.spinners[`analyze${systemName}`].succeed()
             systems[systemName] = result.val
           } else {
-            spinner.fail()
+            failSpinners(this, this.spinners)
 
             printErrorAndExit(this, result.val)
           }
         }
       }
 
-      const spinner = ora('Calculating config updates').start()
+      this.spinners.calculating = ora('Calculating config updates')
+
+      const spinner = this.spinners.calculating.start()
       const commands = getConfigUpdateCommandsForMerge(config, systems)
       spinner.succeed()
 

@@ -13,6 +13,7 @@ import { Rngo } from '@main'
 import { LocalConfig, LocalConfigSchema } from '@cli/config'
 import { InferError } from './systems'
 import { ClientError } from 'graphql-request'
+import { Ora } from 'ora'
 
 export function getGlobalConfigPath() {
   return path.join(homedir(), '.rngo', 'config.yml')
@@ -102,6 +103,21 @@ export async function getConfigOrExit(
   }
 
   return config!
+}
+
+export function failSpinners(command: Command, spinners: Record<string, Ora>) {
+  let wasSpinning = false
+
+  Object.values(spinners).forEach((spinner) => {
+    if (spinner.isSpinning) {
+      spinner.fail()
+      wasSpinning = true
+    }
+  })
+
+  if (wasSpinning) {
+    command.log()
+  }
 }
 
 export function printCaughtError(command: Command, error: unknown): void {
