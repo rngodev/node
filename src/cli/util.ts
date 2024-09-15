@@ -132,15 +132,11 @@ export function printErrorAndExit(
   command: Command,
   errors: PrintableError[]
 ): never {
-  if (errors.length > 1) {
-    command.log(chalk.red.bold(pluralize('error', errors.length, true)))
+  command.log(chalk.red.bold(pluralize('error', errors.length, true)))
 
-    errors.forEach((error) => {
-      command.log(`  ${formatError(error)}`)
-    })
-  } else if (errors.length === 1) {
-    command.log(formatError(errors[0]))
-  }
+  errors.forEach((error) => {
+    command.log(`  ${formatError(error)}`)
+  })
 
   process.exit(1)
 }
@@ -158,10 +154,12 @@ function formatError(error: PrintableError): string {
     prefix = `'${error.key}' flag`
   } else if (error.code === 'missingArg') {
     prefix = `'${error.key}' flag`
+  } else if (error.code === 'invalidConfig') {
+    prefix = `config`
   }
 
   if (prefix) {
-    return `${chalk.bold.yellow(prefix)}: ${error.message}`
+    return `${chalk.dim(prefix)}: ${error.message}`
   } else {
     return error.message
   }
