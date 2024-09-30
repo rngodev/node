@@ -43,7 +43,7 @@ describe('Rngo#pushConfigFile', () => {
         },
       })
 
-    const result = await rngo.pushConfigFile()
+    const result = await rngo.publishConfigFile()
     expect(result.ok).toBe(true)
 
     const configFile = result.unwrap()

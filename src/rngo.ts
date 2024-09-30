@@ -71,7 +71,7 @@ export type CompileSimulationError =
 
 export type RunSimulationError = InsufficientVolumeError | GeneralError
 
-export type PushConfigFileError = InvalidConfigError
+export type PublishConfigFileError = InvalidConfigError
 
 export class Rngo {
   static async initiateDeviceAuth(options?: {
@@ -295,14 +295,16 @@ export class Rngo {
       gql(/* GraphQL */ `
         mutation nodeCompileLocalSimulation($input: CompileLocalSimulation!) {
           compileLocalSimulation(input: $input) {
-            __typename
-            ... on Simulation {
-              id
-            }
-            ... on SimulationCompileFailure {
-              configFileSource {
-                jsonPointer
-                message
+            id
+            result {
+              __typename
+              ... on CompileSimulationFailure {
+                configFileSource {
+                  jsonPointer
+                  issue {
+                    message
+                  }
+                }
               }
             }
           }
@@ -317,7 +319,7 @@ export class Rngo {
     )
 
     if (compileLocalSimulation.__typename == 'Simulation') {
-      const compileErrors = await this.#getSimulationCompileErrors(
+      const compileErrors = await this.#getSimulationCompilationErrors(
         compileLocalSimulation.id
       )
 
@@ -355,28 +357,29 @@ export class Rngo {
    *
    * @returns The ID of the created config file resource.
    */
-  async pushConfigFile(): Promise<Result<ConfigFile, PushConfigFileError[]>> {
+  async publishConfigFile(): Promise<
+    Result<ConfigFile, PublishConfigFileError[]>
+  > {
     const scmRepo = await rngoUtil.getScmRepo()
 
-    const { pushConfigFile } = await this.gqlClient.request(
+    const { publishConfigFile } = await this.gqlClient.request(
       gql(/* GraphQL */ `
-        mutation nodePushConfigFile($input: PushConfigFile!) {
-          pushConfigFile(input: $input) {
-            __typename
-            ... on ConfigFile {
-              id
-              branch {
-                name
+        mutation nodePublishConfigFile($input: PublishConfigFile!) {
+          publishConfigFile(input: $input) {
+            id
+            result {
+              __typename
+              ... on PublishConfigFileFailure {
+                source {
+                  jsonPointer
+                  issue {
+                    message
+                  }
+                }
               }
-            }
-            ... on PushConfigFileFailure {
-              config {
-                path
+              ... on ConcurrencyIssue {
                 message
               }
-            }
-            ... on SynchronizationError {
-              message
             }
           }
         }
@@ -389,17 +392,20 @@ export class Rngo {
       }
     )
 
-    if (pushConfigFile.__typename == 'ConfigFile') {
-      const mergeResult = await rngoUtil.poll(async () => {
-        const { configFile } = await this.gqlClient.request(
+    if (!publishConfigFile.result) {
+      const publicationResult = await rngoUtil.poll(async () => {
+        const { configFilePublication } = await this.gqlClient.request(
           gql(/* GraphQL */ `
-            query nodePollConfigFile($id: String!) {
-              configFile(id: $id) {
-                mergeResult {
+            query nodePollConfigFilePublication($id: ID!) {
+              configFilePublication(id: $id) {
+                result {
                   __typename
-                  ... on ConfigFileMergeFailure {
-                    errors {
-                      message
+                  ... on PublishConfigFileFailure {
+                    source {
+                      jsonPointer
+                      issue {
+                        message
+                      }
                     }
                   }
                 }
@@ -407,23 +413,23 @@ export class Rngo {
             }
           `),
           {
-            id: pushConfigFile.id,
+            id: publishConfigFile.id,
           }
         )
 
-        if (configFile?.mergeResult) {
-          return configFile.mergeResult
+        if (configFilePublication?.result) {
+          return configFilePublication.result
         }
       })
 
-      if (mergeResult) {
-        if (mergeResult.__typename == 'MergedConfigFile') {
+      if (publicationResult) {
+        if (publicationResult.__typename == 'PublishConfigFileSuccess') {
           return Ok({
-            id: pushConfigFile.id,
-            branch: pushConfigFile.branch?.name,
+            id: publishConfigFile.id,
+            branch: publishConfigFile.branch?.name,
           })
         } else {
-          const configFileErrors = mergeResult.errors.map((error) => {
+          const configFileErrors = configFilePublication.errors.map((error) => {
             return {
               code: 'invalidConfig' as const,
               message: error.message,
@@ -435,13 +441,13 @@ export class Rngo {
       } else {
         throw new Error(`Config file processing timed out`)
       }
-    } else if (pushConfigFile.__typename == 'PushConfigFileFailure') {
-      return Err(pushConfigFile.config || [])
+    } else if (publishConfigFile.__typename == 'PublishConfigFileFailure') {
+      return Err(publishConfigFile.config || [])
     } else {
       return Err([
         {
           code: 'invalidConfig' as const,
-          message: pushConfigFile.message,
+          message: publishConfigFile.message,
           jsonPointer: '',
         },
       ])
@@ -460,9 +466,9 @@ export class Rngo {
       gql(/* GraphQL */ `
         mutation nodeCompileGlobalSimulation($input: CompileGlobalSimulation!) {
           compileGlobalSimulation(input: $input) {
-            __typename
-            ... on Simulation {
-              id
+            id
+            result {
+              __typename
             }
           }
         }
@@ -479,8 +485,8 @@ export class Rngo {
       }
     )
 
-    if (compileGlobalSimulation.__typename == 'Simulation') {
-      const compileErrors = await this.#getSimulationCompileErrors(
+    if (!compileGlobalSimulation.result) {
+      const compileErrors = await this.#getSimulationCompilationErrors(
         compileGlobalSimulation.id
       )
 
@@ -496,17 +502,17 @@ export class Rngo {
     }
   }
 
-  async #getSimulationCompileErrors(
+  async #getSimulationCompilationErrors(
     id: string
   ): Promise<CompileSimulationError[] | undefined> {
     const compileResult = await rngoUtil.poll(async () => {
       const { simulation } = await this.gqlClient.request(
         gql(/* GraphQL */ `
-          query nodePollSimulation($id: String!) {
-            simulation(id: $id) {
-              compileResult {
+          query nodePollSimulationCompilation($id: ID!) {
+            simulationCompilation(id: $id) {
+              result {
                 __typename
-                ... on SimulationCompileFailure {
+                ... on CompileSimulationFailure {
                   scenario {
                     message
                   }
@@ -559,17 +565,17 @@ export class Rngo {
             ... on FileSink {
               id
             }
-            ... on RunSimulationToFileValidationError {
+            ... on RunSimulationToFileFailure {
               simulationId {
                 message
               }
             }
-            ... on InsufficientPreviewVolumeError {
+            ... on PreviewVolumeIssue {
               message
-              availableMbs
-              requiredMbs
+              availableUnits
+              requiredUnits
             }
-            ... on Error {
+            ... on Issue {
               message
             }
           }
