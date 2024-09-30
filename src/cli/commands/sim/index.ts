@@ -115,9 +115,9 @@ export default class Run extends Command {
           this.log()
           this.log(
             `You have ${chalk.bold(
-              `${previewError.availableVolume} ${previewError.availableVolume > 1 ? 'MBs' : 'MB'}`
+              `${previewError.availableUnits} ${previewError.availableUnits > 1 ? 'units' : 'unit'}`
             )} of preview volume available, but this simulation has a volume of ${chalk.bold(
-              `${previewError.requiredVolume} ${previewError.requiredVolume > 1 ? 'MBs' : 'MB'}`
+              `${previewError.requiredUnits} ${previewError.requiredUnits > 1 ? 'nuits' : 'unit'}`
             )}.
 To proceed, go to ${chalk.yellow.bold(
               'https://rngo.dev/settings'

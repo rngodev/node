@@ -34,8 +34,8 @@ export type MissingArgError<K extends string> = {
 
 export type InsufficientVolumeError = {
   code: 'insufficientVolume'
-  requiredVolume: number
-  availableVolume: number
+  requiredUnits: number
+  availableUnits: number
 }
 
 export type ValidJwtToken = { token: string; expirationDate: Date }
