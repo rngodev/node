@@ -35,11 +35,9 @@ describe('Rngo#publishConfigFile', () => {
         configFilePublication: {
           result: {
             __typename: 'ConfigFile',
-            configFile: {
-              key: 'k1',
-              branch: {
-                name: 'feature1',
-              },
+            key: 'k1',
+            branch: {
+              name: 'feature1',
             },
           },
         },
