@@ -6,17 +6,19 @@ import { setTimeout } from 'node:timers/promises'
 import simpleGit, { SimpleGit } from 'simple-git'
 import TsResult, { Result } from 'ts-results'
 import yauzl from 'yauzl'
+import * as jp from 'jsonpath'
 
 const { Err, Ok } = TsResult
 
 export type GeneralError = {
   code: 'general'
   message: string
+  path?: (string | number)[]
 }
 
 export type InvalidConfigError = {
   code: 'invalidConfig'
-  jsonPointer: string
+  path: (string | number)[]
   message: string
 }
 
@@ -256,4 +258,16 @@ export function buildJsonPointer(path: (string | number)[]): string {
   } else {
     return '/' + path.join('/')
   }
+}
+
+export function jsonPathParts(expression: string): (string | number)[] {
+  const parts: (string | number)[] = []
+
+  jp.parse(expression).forEach((part) => {
+    if (part.expression.type === 'identifier') {
+      parts.push(part.expression.value)
+    }
+  })
+
+  return parts
 }

@@ -19,6 +19,7 @@ import {
   MissingArgError,
   ValidJwtToken,
   buildJsonPointer,
+  jsonPathParts,
 } from './util'
 
 const { Err, Ok } = TsResult
@@ -68,10 +69,11 @@ export type InitError =
 export type CompileSimulationError =
   | InvalidConfigError
   | InvalidArgError<'branch' | 'scenario'>
+  | GeneralError
 
 export type RunSimulationError = InsufficientVolumeError | GeneralError
 
-export type PublishConfigFileError = InvalidConfigError
+export type PublishConfigFileError = InvalidConfigError | GeneralError
 
 export class Rngo {
   static async initiateDeviceAuth(options?: {
@@ -223,7 +225,7 @@ export class Rngo {
           result.error.issues.map((zodIssue) => {
             errors.push({
               code: 'invalidConfig',
-              jsonPointer: buildJsonPointer(zodIssue.path),
+              path: zodIssue.path,
               message: zodIssue.message,
             })
           })
@@ -284,73 +286,6 @@ export class Rngo {
     return path.join(this.simulationsDir, simulationId)
   }
 
-  async compileLocalSimulation(args: {
-    branch?: string
-    scenario?: string
-    seed?: number
-    start?: string
-    end?: string
-  }): Promise<Result<string, CompileSimulationError[]>> {
-    const { compileLocalSimulation } = await this.gqlClient.request(
-      gql(/* GraphQL */ `
-        mutation nodeCompileLocalSimulation($input: CompileLocalSimulation!) {
-          compileLocalSimulation(input: $input) {
-            id
-            result {
-              __typename
-              ... on CompileSimulationFailure {
-                configFileSource {
-                  jsonPointer
-                  issue {
-                    message
-                  }
-                }
-              }
-            }
-          }
-        }
-      `),
-      {
-        input: {
-          ...args,
-          configFileSource: JSON.stringify(this.configFileSource),
-        },
-      }
-    )
-
-    if (!compileLocalSimulation.result) {
-      const compileErrors = await this.#getSimulationCompilationErrors(
-        compileLocalSimulation.id
-      )
-
-      if (compileErrors) {
-        return Err(compileErrors)
-      } else {
-        return Ok(compileLocalSimulation.id)
-      }
-    } else if (
-      compileLocalSimulation.result.__typename === 'CompileSimulationFailure'
-    ) {
-      const issues = (compileLocalSimulation.result.configFileSource || []).map(
-        (jsonIssue) => {
-          return {
-            code: 'invalidConfig' as const,
-            jsonPointer: jsonIssue.jsonPointer,
-            message: jsonIssue.issue.message,
-          }
-        }
-      )
-
-      if (issues.length > 0) {
-        return Err(issues)
-      }
-    }
-
-    throw new Error(
-      `Unhandled GraphQL error: ${JSON.stringify(compileLocalSimulation)}`
-    )
-  }
-
   /**
    * Idempotently inserts and / or update any systems, scenarios or streams
    * specified in the local config file to the rngo API. This should be called
@@ -369,28 +304,6 @@ export class Rngo {
         mutation nodePublishConfigFile($input: PublishConfigFile!) {
           publishConfigFile(input: $input) {
             id
-            result {
-              __typename
-              ... on PublishConfigFileSuccess {
-                configFile {
-                  key
-                  branch {
-                    name
-                  }
-                }
-              }
-              ... on PublishConfigFileFailure {
-                source {
-                  jsonPointer
-                  issue {
-                    message
-                  }
-                }
-              }
-              ... on ConcurrencyIssue {
-                message
-              }
-            }
           }
         }
       `),
@@ -402,62 +315,62 @@ export class Rngo {
       }
     )
 
-    let publicationResult = publishConfigFile.result
-
-    if (!publicationResult) {
-      publicationResult = await rngoUtil.poll(async () => {
-        const { configFilePublication } = await this.gqlClient.request(
-          gql(/* GraphQL */ `
-            query nodePollConfigFilePublication($id: ID!) {
-              configFilePublication(id: $id) {
-                result {
-                  __typename
-                  ... on PublishConfigFileSuccess {
-                    configFile {
-                      key
-                      branch {
-                        name
-                      }
-                    }
+    const publicationResult = await rngoUtil.poll(async () => {
+      const { configFilePublication } = await this.gqlClient.request(
+        gql(/* GraphQL */ `
+          query nodePollConfigFilePublication($id: ID!) {
+            configFilePublication(id: $id) {
+              result {
+                __typename
+                ... on ConfigFile {
+                  key
+                  branch {
+                    name
                   }
-                  ... on PublishConfigFileFailure {
-                    source {
-                      jsonPointer
-                      issue {
-                        message
-                      }
-                    }
-                  }
-                  ... on ConcurrencyIssue {
+                }
+                ... on Failure {
+                  issues {
+                    __typename
                     message
+                    path
                   }
                 }
               }
             }
-          `),
-          {
-            id: publishConfigFile.id,
           }
-        )
-
-        if (configFilePublication?.result) {
-          return configFilePublication.result
+        `),
+        {
+          id: publishConfigFile.id,
         }
-      })
-    }
+      )
+
+      if (configFilePublication?.result) {
+        return configFilePublication.result
+      }
+    })
 
     if (publicationResult) {
-      if (publicationResult.__typename == 'PublishConfigFileSuccess') {
+      if (publicationResult.__typename == 'ConfigFile') {
         return Ok({
-          key: publicationResult.configFile.key,
-          branch: publicationResult.configFile.branch?.name,
+          key: publicationResult.key,
+          branch: publicationResult.branch?.name,
         })
-      } else if (publicationResult.__typename == 'PublishConfigFileFailure') {
-        const configFileErrors = publicationResult.source?.map((jsonIssue) => {
+      } else if (publicationResult.__typename == 'Failure') {
+        const configFileErrors = publicationResult.issues.map((issue) => {
+          const path = issue.path ? jsonPathParts(issue.path) : undefined
+
+          if (path && path[0] === 'source') {
+            return {
+              code: 'invalidConfig' as const,
+              message: issue.message,
+              path,
+            }
+          }
+
           return {
-            code: 'invalidConfig' as const,
-            message: jsonIssue.issue.message,
-            jsonPointer: jsonIssue.jsonPointer,
+            code: 'general' as const,
+            message: issue.message,
+            path,
           }
         })
 
@@ -474,57 +387,59 @@ export class Rngo {
     }
   }
 
-  async compileGlobalSimulation(
-    branch?: string,
-    scenario?: string,
-    seed?: number,
-    start?: string,
-    end?: string,
-    streams?: string[]
-  ): Promise<Result<string, CompileSimulationError[]>> {
-    const { compileGlobalSimulation } = await this.gqlClient.request(
+  async compileLocalSimulation(args: {
+    branch?: string
+    scenario?: string
+    seed?: number
+    start?: string
+    end?: string
+  }): Promise<Result<string, CompileSimulationError[]>> {
+    const { compileLocalSimulation } = await this.gqlClient.request(
       gql(/* GraphQL */ `
-        mutation nodeCompileGlobalSimulation($input: CompileGlobalSimulation!) {
-          compileGlobalSimulation(input: $input) {
+        mutation nodeCompileLocalSimulation($input: CompileLocalSimulation!) {
+          compileLocalSimulation(input: $input) {
             id
-            result {
-              __typename
-            }
           }
         }
       `),
       {
         input: {
-          branch,
-          scenario,
-          seed,
-          start,
-          end,
-          streams,
+          ...args,
+          configFileSource: JSON.stringify(this.configFileSource),
         },
       }
     )
 
-    if (!compileGlobalSimulation.result) {
-      const compileErrors = await this.#getSimulationCompilationErrors(
-        compileGlobalSimulation.id
-      )
-
-      if (compileErrors) {
-        return Err(compileErrors)
-      } else {
-        return Ok(compileGlobalSimulation.id)
-      }
-    } else {
-      throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(compileGlobalSimulation)}`
-      )
-    }
+    return this.#pollSimulationCompilation(compileLocalSimulation.id)
   }
 
-  async #getSimulationCompilationErrors(
+  async compileGlobalSimulation(args: {
+    branch?: string
+    scenario?: string
+    seed?: number
+    start?: string
+    end?: string
+    streams?: string[]
+  }): Promise<Result<string, CompileSimulationError[]>> {
+    const { compileGlobalSimulation } = await this.gqlClient.request(
+      gql(/* GraphQL */ `
+        mutation nodeCompileGlobalSimulation($input: CompileGlobalSimulation!) {
+          compileGlobalSimulation(input: $input) {
+            id
+          }
+        }
+      `),
+      {
+        input: args,
+      }
+    )
+
+    return this.#pollSimulationCompilation(compileGlobalSimulation.id)
+  }
+
+  async #pollSimulationCompilation(
     id: string
-  ): Promise<CompileSimulationError[] | undefined> {
+  ): Promise<Result<string, CompileSimulationError[]>> {
     const compileResult = await rngoUtil.poll(async () => {
       const { simulationCompilation } = await this.gqlClient.request(
         gql(/* GraphQL */ `
@@ -532,9 +447,14 @@ export class Rngo {
             simulationCompilation(id: $id) {
               result {
                 __typename
-                ... on CompileSimulationFailure {
-                  scenario {
+                ... on Simulation {
+                  id
+                }
+                ... on Failure {
+                  issues {
+                    __typename
                     message
+                    path
                   }
                 }
               }
@@ -553,23 +473,44 @@ export class Rngo {
 
     if (compileResult) {
       if (compileResult.__typename == 'Simulation') {
-        return undefined
+        return Ok(compileResult.id)
       } else {
-        const errors: CompileSimulationError[] = []
+        const errors = compileResult.issues.map((issue) => {
+          const path = issue.path ? jsonPathParts(issue.path) : undefined
 
-        if (compileResult.scenario) {
-          compileResult.scenario.forEach((issue) => {
-            errors.push({
-              code: 'invalidArg',
-              key: 'scenario',
-              message: issue.message,
-            })
-          })
-        }
+          if (path) {
+            if (path[0] === 'scenario') {
+              return {
+                code: 'invalidArg' as const,
+                key: 'scenario' as const,
+                message: issue.message,
+              }
+            } else if (path[0] === 'branch') {
+              return {
+                code: 'invalidArg' as const,
+                key: 'branch' as const,
+                message: issue.message,
+              }
+            } else if (path[0] === 'configFileSource') {
+              return {
+                code: 'invalidConfig' as const,
+                path: path,
+                message: issue.message,
+              }
+            }
+          }
 
-        return errors.length > 0 ? errors : undefined
+          return {
+            code: 'general' as const,
+            message: issue.message,
+            path,
+          }
+        })
+
+        return Err(errors)
       }
     } else {
+      // TODO: make a real Error for this
       throw new Error(`Simulation processing timed out`)
     }
   }
@@ -585,18 +526,16 @@ export class Rngo {
             ... on FileSink {
               id
             }
-            ... on RunSimulationToFileFailure {
-              simulationId {
+            ... on Failure {
+              issues {
+                __typename
                 message
+                path
+                ... on PreviewVolumeIssue {
+                  availableUnits
+                  requiredUnits
+                }
               }
-            }
-            ... on PreviewVolumeIssue {
-              message
-              availableUnits
-              requiredUnits
-            }
-            ... on Issue {
-              message
             }
           }
         }
@@ -655,30 +594,24 @@ export class Rngo {
       } else {
         throw new Error(`Drain simulation to file timed out`)
       }
-    } else if (
-      runSimulationToFile.__typename === 'RunSimulationToFileFailure' &&
-      runSimulationToFile.simulationId
-    ) {
-      return Err(
-        runSimulationToFile.simulationId.map((e) => {
-          return { code: 'general', message: e.message }
-        })
-      )
-    } else if (runSimulationToFile.__typename === 'PreviewVolumeIssue') {
-      const error = runSimulationToFile as PreviewVolumeIssue
-      return Err([
-        {
-          code: 'insufficientVolume',
-          requiredUnits: error.requiredUnits,
-          availableUnits: error.availableUnits,
-        },
-      ])
-    } else if (runSimulationToFile.__typename === 'RngoCapacityIssue') {
-      return Err([{ code: 'general', message: runSimulationToFile.message }])
     } else {
-      throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(runSimulationToFile)}`
-      )
+      const errors = runSimulationToFile.issues.map((issue) => {
+        if (issue.__typename === 'PreviewVolumeIssue') {
+          return {
+            code: 'insufficientVolume' as const,
+            requiredUnits: issue.requiredUnits,
+            availableUnits: issue.availableUnits,
+          }
+        }
+
+        return {
+          code: 'general' as const,
+          message: issue.message,
+          path: issue.path ? jsonPathParts(issue.path) : undefined,
+        }
+      })
+
+      return Err(errors)
     }
   }
 
