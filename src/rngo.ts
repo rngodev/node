@@ -1,5 +1,4 @@
 import { GraphQLClient } from 'graphql-request'
-import JSONbig from 'json-bigint'
 import { execFile } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -10,7 +9,7 @@ import { z } from 'zod'
 
 import * as rngoUtil from './util'
 import { gql } from './gql/gql'
-import { PreviewVolumeIssue, DeviceType } from './gql/graphql'
+import { DeviceType } from './gql/graphql'
 import {
   GeneralError,
   InsufficientVolumeError,
@@ -355,7 +354,7 @@ export class Rngo {
           key: publicationResult.key,
           branch: publicationResult.branch?.name,
         })
-      } else if (publicationResult.__typename == 'Failure') {
+      } else {
         const configFileErrors = publicationResult.issues.map((issue) => {
           const path = issue.path ? jsonPathParts(issue.path) : undefined
 
@@ -374,14 +373,8 @@ export class Rngo {
           }
         })
 
-        if (configFileErrors) {
-          return Err(configFileErrors)
-        }
+        return Err(configFileErrors)
       }
-
-      throw new Error(
-        `Unhandled GraphQL error: ${rngoUtil.JsonSerde.stringify(publicationResult)}`
-      )
     } else {
       throw new Error(`Config file processing timed out`)
     }

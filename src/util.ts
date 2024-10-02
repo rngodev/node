@@ -46,6 +46,8 @@ export const JsonSerde = JSONbig({ useNativeBigInt: true })
 export type ValidJwtToken = { token: string; expirationDate: Date }
 export type JwtTokenError = 'missing' | 'expired' | 'malformed'
 
+export const JsonSerde = JSONbig({ useNativeBigInt: true })
+
 export function resolveApiUrl(
   apiUrl: string | undefined
 ): Result<URL, InvalidArgError<'apiUrl'>> {
