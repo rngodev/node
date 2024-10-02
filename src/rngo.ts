@@ -655,11 +655,25 @@ export class Rngo {
     return simulationDir
   }
 
-  async importSimulation(simulationId: string) {
+  async importSimulation(
+    simulationId: string
+  ): Promise<Result<string, GeneralError[]>> {
     const directory = this.simulationDir(simulationId)
 
-    return nodeUtil.promisify(execFile)('./import.sh', {
-      cwd: directory,
-    })
+    try {
+      const out = await nodeUtil.promisify(execFile)('./import.sh', {
+        cwd: directory,
+      })
+
+      return Ok(out.stdout)
+    } catch (error) {
+      return Err([
+        {
+          code: 'general' as const,
+          message: `Simulation import script failed`,
+          details: error instanceof Error ? error.message : undefined,
+        },
+      ])
+    }
   }
 }

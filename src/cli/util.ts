@@ -148,35 +148,40 @@ export function printErrorAndExit(
   command: Command,
   errors: PrintableError[]
 ): never {
-  command.log(chalk.red.bold(pluralize('error', errors.length, true)))
-
-  errors.forEach((error) => {
-    command.log(`  ${formatError(error)}`)
+  errors.forEach((error, index) => {
+    command.log(`${formatError(error)}`)
+    if (index < errors.length - 1) {
+      command.log()
+    }
   })
 
   process.exit(1)
 }
 
 function formatError(error: PrintableError): string {
-  let prefix: string | undefined = undefined
+  let context: string | undefined = undefined
 
   if (error.code === 'invalidArg') {
-    if (error.key === 'apiToken') {
-      return `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
-        'rngo auth'
-      )}`
-    }
-
-    prefix = `'${error.key}' flag`
+    context = `'${error.key}' flag`
   } else if (error.code === 'missingArg') {
-    prefix = `'${error.key}' flag`
+    context = `'${error.key}' flag`
   } else if (error.code === 'invalidConfig') {
-    prefix = `config`
+    context = `config`
   }
 
-  if (prefix) {
-    return `${chalk.dim(prefix)}: ${error.message}`
-  } else {
-    return error.message
+  let message = context
+    ? `${chalk.red(error.message)} [${context}]`
+    : chalk.red(error.message)
+
+  let details: string | undefined = undefined
+
+  if (error.code === 'general') {
+    details = error.details
   }
+
+  if (details) {
+    message += `\n${chalk.dim(details)}`
+  }
+
+  return message
 }

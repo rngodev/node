@@ -14,6 +14,7 @@ const { Err, Ok } = TsResult
 export type GeneralError = {
   code: 'general'
   message: string
+  details?: string
   path?: (string | number)[]
 }
 
