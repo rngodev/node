@@ -6,7 +6,7 @@ import { setTimeout } from 'node:timers/promises'
 import simpleGit, { SimpleGit } from 'simple-git'
 import TsResult, { Result } from 'ts-results'
 import yauzl from 'yauzl'
-import * as jp from 'jsonpath'
+import jp from 'jsonpath'
 import JSONbig from 'json-bigint'
 
 const { Err, Ok } = TsResult
@@ -27,6 +27,12 @@ export type InvalidConfigError = {
 export type InvalidArgError<K extends string> = {
   code: 'invalidArg'
   key: K
+  message: string
+}
+
+export type InvalidEnvVarError<K extends string> = {
+  code: 'invalidEnvVar'
+  envVar: K
   message: string
 }
 
@@ -51,7 +57,7 @@ export const JsonSerde = JSONbig({ useNativeBigInt: true })
 
 export function resolveApiUrl(
   apiUrl: string | undefined
-): Result<URL, InvalidArgError<'apiUrl'>> {
+): Result<URL, InvalidArgError<'apiUrl'> | InvalidEnvVarError<'RNGO_API_URL'>> {
   let rawUrl = apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev'
 
   if (!rawUrl.endsWith('/graphql')) {
@@ -61,12 +67,19 @@ export function resolveApiUrl(
   try {
     return Ok(new URL(rawUrl))
   } catch (error) {
-    const key = apiUrl ? 'apiUrl' : 'RNGO_API_URL'
-    return Err({
-      code: 'invalidArg',
-      key: 'apiUrl',
-      message: `Error parsing ${key} value '${rawUrl}': ${error}`,
-    })
+    if (apiUrl) {
+      return Err({
+        code: 'invalidArg',
+        key: 'apiUrl',
+        message: `Error parsing apiUrl value '${rawUrl}': ${error}`,
+      })
+    } else {
+      return Err({
+        code: 'invalidEnvVar',
+        envVar: 'RNGO_API_URL',
+        message: `Error parsing RNGO_API_TOKEN value '${rawUrl}': ${error}`,
+      })
+    }
   }
 }
 
@@ -258,12 +271,8 @@ export async function unzip(
   })
 }
 
-export function buildJsonPointer(path: (string | number)[]): string {
-  if (path.length === 0) {
-    return ''
-  } else {
-    return '/' + path.join('/')
-  }
+export function jsonPathFromParts(path: (string | number)[]): string {
+  return jp.stringify(['$', ...path])
 }
 
 export function jsonPathParts(expression: string): (string | number)[] {

@@ -58,20 +58,35 @@ export async function getRngoOrExit(
   const globalConfig = await getGlobalConfig()
 
   if (globalConfig.token) {
+    const apiToken = process.env.RNGO_API_TOKEN ? undefined : globalConfig.token
+
     const result = await Rngo.init({
-      apiToken: globalConfig.token,
+      apiToken,
       configFilePath: flags?.config,
     })
 
     if (result.ok) {
       return result.val
     } else {
-      printErrorAndExit(command, result.val)
+      const apiTokenError = result.val.find(
+        (error) => error.code === 'invalidArg' && error.key === 'apiToken'
+      )
+
+      if (apiTokenError) {
+        printMessageAndExit(
+          command,
+          `Your rngo session has expired. Log in again by running: ${chalk.yellow.bold(
+            'rngo auth'
+          )}`
+        )
+      } else {
+        printErrorAndExit(command, result.val)
+      }
     }
   } else {
     printMessageAndExit(
       command,
-      `To get started, first log into the rngo API by running: ${chalk.yellow.bold(
+      `To get started, first log into the rngo by running: ${chalk.yellow.bold(
         'rngo auth'
       )}`
     )
@@ -141,6 +156,7 @@ type PrintableError =
   | rngoUtil.GeneralError
   | rngoUtil.InvalidArgError<string>
   | rngoUtil.MissingArgError<string>
+  | rngoUtil.InvalidEnvVarError<string>
   | rngoUtil.InvalidConfigError
   | InferError
 
@@ -149,9 +165,9 @@ export function printErrorAndExit(
   errors: PrintableError[]
 ): never {
   errors.forEach((error, index) => {
-    command.log(`${formatError(error)}`)
+    command.logToStderr(`${formatError(error)}`)
     if (index < errors.length - 1) {
-      command.log()
+      command.logToStderr()
     }
   })
 
@@ -159,19 +175,17 @@ export function printErrorAndExit(
 }
 
 function formatError(error: PrintableError): string {
-  let context: string | undefined = undefined
+  let prefix: string = 'Error'
 
-  if (error.code === 'invalidArg') {
-    context = `'${error.key}' flag`
-  } else if (error.code === 'missingArg') {
-    context = `'${error.key}' flag`
+  if (error.code === 'invalidArg' || error.code === 'missingArg') {
+    prefix = `'${error.key}' flag invalid`
+  } else if (error.code === 'invalidEnvVar') {
+    prefix = `Environment variable '${error.envVar}' invalid`
   } else if (error.code === 'invalidConfig') {
-    context = `config`
+    prefix = `Config file invalid at ${rngoUtil.jsonPathFromParts(error.path)}`
   }
 
-  let message = context
-    ? `${chalk.red(error.message)} [${context}]`
-    : chalk.red(error.message)
+  let message = `${chalk.bold(prefix)}\n${error.message}`
 
   let details: string | undefined = undefined
 
