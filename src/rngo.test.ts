@@ -20,34 +20,34 @@ describe('Rngo.init', () => {
   })
 })
 
-describe('Rngo#pushConfigFile', () => {
+describe('Rngo#publishConfigFile', () => {
   test('success', async () => {
     const rngo = await validRngo()
 
     jest
       .spyOn(rngo.gqlClient, 'request')
       .mockResolvedValueOnce({
-        pushConfigFile: {
-          __typename: 'ConfigFile',
+        publishConfigFile: {
           id: 'clse48vh2000a08l2h92rhyps',
-          branch: {
-            name: 'feature1',
-          },
         },
       })
       .mockResolvedValueOnce({
-        configFile: {
-          mergeResult: {
-            __typename: 'MergedConfigFile',
+        configFilePublication: {
+          result: {
+            __typename: 'ConfigFile',
+            key: 'k1',
+            branch: {
+              name: 'feature1',
+            },
           },
         },
       })
 
-    const result = await rngo.pushConfigFile()
+    const result = await rngo.publishConfigFile()
     expect(result.ok).toBe(true)
 
     const configFile = result.unwrap()
-    expect(configFile.id).toBe('clse48vh2000a08l2h92rhyps')
+    expect(configFile.key).toBe('k1')
     expect(configFile.branch).toBe('feature1')
   })
 })

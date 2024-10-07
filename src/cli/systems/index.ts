@@ -16,6 +16,7 @@ export type InferArgs = {
 }
 
 export type InferError = {
+  code: 'infer'
   message: string
 }
 
@@ -48,6 +49,7 @@ export async function inferConfigFromSystem(
     }
   } else {
     errors.concat({
+      code: 'infer',
       message: `Do not know how to infer from system '${systemName}'`,
     })
   }

@@ -1,34 +1,48 @@
 import { Command } from '@oclif/core'
 import chalk from 'chalk'
 import { promises as fs } from 'fs'
-import ora from 'ora'
+import ora, { Ora } from 'ora'
 import path from 'path'
 
 import * as rngoUtil from '@util'
 import { Rngo } from '@main'
+import { failSpinners, printCaughtError } from '@src/cli/util'
 
 export default class Init extends Command {
   static description = 'Initialize this repo for rngo'
+
+  async catch(error: unknown) {
+    failSpinners(this, this.spinners)
+    printCaughtError(this, error)
+  }
+
+  spinners: Record<string, Ora> = {}
 
   async run() {
     const configFilePath = Rngo.defaultConfigFilePath()
     const relativePath = path.relative(process.cwd(), configFilePath)
     const changedFiles: string[] = []
 
-    const fileSpinner = ora(`Initializing config at ${relativePath}`).start()
+    this.spinners = {
+      init: ora(`Initializing config at ${relativePath}`),
+      gitIgnore: ora('Updating .gitignore'),
+      gitAdd: ora('Adding files to git'),
+    }
+
+    this.spinners.init.start()
 
     if (await rngoUtil.fileExists(configFilePath)) {
-      fileSpinner.succeed(chalk.yellow(`${relativePath} already exists`))
+      this.spinners.init.succeed(chalk.yellow(`${relativePath} already exists`))
     } else {
       changedFiles.push(configFilePath)
-      fileSpinner.succeed()
+      this.spinners.init.succeed()
       await rngoUtil.writeFile(configFilePath, InitialConfig)
     }
 
     const git = await rngoUtil.maybeGit()
 
     if (git) {
-      const gitIgnoreSpinner = ora('Updating .gitignore').start()
+      this.spinners.gitIgnore.start()
       const gitIgnorePath = path.join(process.cwd(), '.gitignore')
 
       if (await rngoUtil.fileExists(gitIgnorePath)) {
@@ -36,24 +50,24 @@ export default class Init extends Command {
         const referencesRngo = gitIgnoreContents?.includes(GitIngoreLines)
 
         if (referencesRngo) {
-          gitIgnoreSpinner.succeed(
+          this.spinners.gitIgnore.succeed(
             chalk.yellow('.gitignore already setup for rngo')
           )
         } else {
           await fs.appendFile(gitIgnorePath, GitIngoreLines)
           changedFiles.push(gitIgnorePath)
-          gitIgnoreSpinner.succeed()
+          this.spinners.gitIgnore.succeed()
         }
       } else {
         rngoUtil.writeFile(gitIgnorePath, GitIngoreLines)
         changedFiles.push(gitIgnorePath)
-        gitIgnoreSpinner.succeed()
+        this.spinners.gitIgnore.succeed()
       }
 
       if (changedFiles.length > 0) {
-        const gitAddSpinner = ora('Adding files to git').start()
+        this.spinners.gitAdd.start()
         await git.add(changedFiles)
-        gitAddSpinner.succeed()
+        this.spinners.gitAdd.succeed()
       }
     }
 

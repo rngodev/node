@@ -3,33 +3,37 @@ import chalk from 'chalk'
 import clipboard from 'clipboardy'
 import inquirer from 'inquirer'
 import open from 'open'
-import ora from 'ora'
 
 import { Rngo } from '@main'
 
 import { parseJwtToken } from '@src/util'
 
 import {
-  errorAndExit,
   getGlobalConfig,
+  printMessageAndExit,
+  printErrorAndExit,
   setTokenInGlobalConfig,
+  printCaughtError,
 } from '@cli/util'
 
 export default class Login extends Command {
   static summary = 'Authenticate with the rngo API.'
+
+  async catch(error: unknown) {
+    printCaughtError(this, error)
+  }
 
   async run(): Promise<void> {
     const globalConfig = await getGlobalConfig()
     const parsedToken = parseJwtToken(globalConfig.token)
 
     if (parsedToken.ok) {
-      this.log(
+      printMessageAndExit(
+        this,
         `Your rngo API session is still valid. To log out, run: ${chalk.yellow.bold(
           'rngo auth logout'
         )}`
       )
-
-      this.exit(1)
     }
 
     const deviceAuthResult = await Rngo.initiateDeviceAuth({
@@ -38,9 +42,7 @@ export default class Login extends Command {
 
     const deviceAuth = deviceAuthResult
       .mapErr((error) => {
-        if (error.code === 'invalidOption') {
-          errorAndExit(this, 'RngoInitFailed', error.message)
-        }
+        printErrorAndExit(this, [error])
       })
       .unwrap()
 
@@ -75,8 +77,7 @@ export default class Login extends Command {
     if (token) {
       await setTokenInGlobalConfig(token)
     } else {
-      this.log()
-      errorAndExit(this, 'LoginFailed', 'Login failed')
+      printMessageAndExit(this, 'Login failed')
     }
   }
 }

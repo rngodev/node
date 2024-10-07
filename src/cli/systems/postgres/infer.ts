@@ -32,13 +32,17 @@ export async function infer(
           result.data.message.includes('Connection terminated unexpectedly')
         ) {
           return Err([
-            { message: `Could not connect to system '${args.systemName}'` },
+            {
+              code: 'infer',
+              message: `Could not connect to system '${args.systemName}'`,
+            },
           ])
         }
       }
 
       return Err([
         {
+          code: 'infer',
           message: `Error when inspecting '${args.systemName}': ${e}`,
         },
       ])

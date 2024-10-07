@@ -6,34 +6,46 @@ import { setTimeout } from 'node:timers/promises'
 import simpleGit, { SimpleGit } from 'simple-git'
 import TsResult, { Result } from 'ts-results'
 import yauzl from 'yauzl'
-
-import { RngoOptions } from './rngo'
+import * as jp from 'jsonpath'
 
 const { Err, Ok } = TsResult
 
-export type InitError =
-  | {
-      code: 'invalidOption'
-      key: keyof RngoOptions
-      message: string
-    }
-  | {
-      code: 'missingOption'
-      key: keyof RngoOptions
-      message: string
-    }
-  | {
-      code: 'invalidConfig'
-      path: (string | number)[]
-      message: string
-    }
+export type GeneralError = {
+  code: 'general'
+  message: string
+  path?: (string | number)[]
+}
+
+export type InvalidConfigError = {
+  code: 'invalidConfig'
+  path: (string | number)[]
+  message: string
+}
+
+export type InvalidArgError<K extends string> = {
+  code: 'invalidArg'
+  key: K
+  message: string
+}
+
+export type MissingArgError<K extends string> = {
+  code: 'missingArg'
+  key: K
+  message: string
+}
+
+export type InsufficientVolumeError = {
+  code: 'insufficientVolume'
+  requiredUnits: number
+  availableUnits: number
+}
 
 export type ValidJwtToken = { token: string; expirationDate: Date }
 export type JwtTokenError = 'missing' | 'expired' | 'malformed'
 
 export function resolveApiUrl(
   apiUrl: string | undefined
-): Result<URL, InitError> {
+): Result<URL, InvalidArgError<'apiUrl'>> {
   let rawUrl = apiUrl || process.env['RNGO_API_URL'] || 'https://api.rngo.dev'
 
   if (!rawUrl.endsWith('/graphql')) {
@@ -45,7 +57,7 @@ export function resolveApiUrl(
   } catch (error) {
     const key = apiUrl ? 'apiUrl' : 'RNGO_API_URL'
     return Err({
-      code: 'invalidOption',
+      code: 'invalidArg',
       key: 'apiUrl',
       message: `Error parsing ${key} value '${rawUrl}': ${error}`,
     })
@@ -238,4 +250,24 @@ export async function unzip(
       }
     })
   })
+}
+
+export function buildJsonPointer(path: (string | number)[]): string {
+  if (path.length === 0) {
+    return ''
+  } else {
+    return '/' + path.join('/')
+  }
+}
+
+export function jsonPathParts(expression: string): (string | number)[] {
+  const parts: (string | number)[] = []
+
+  jp.parse(expression).forEach((part) => {
+    if (part.expression.type === 'identifier') {
+      parts.push(part.expression.value)
+    }
+  })
+
+  return parts
 }

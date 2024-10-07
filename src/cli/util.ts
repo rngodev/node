@@ -1,4 +1,4 @@
-import { Command } from '@oclif/core'
+import { Command, Errors } from '@oclif/core'
 import chalk from 'chalk'
 import { promises as fs } from 'fs'
 import { homedir } from 'os'
@@ -11,7 +11,9 @@ import * as rngoUtil from '@util'
 import { Rngo } from '@main'
 
 import { LocalConfig, LocalConfigSchema } from '@cli/config'
-import { CliError, ErrorCode, arrayToJsonPath } from '@cli/error'
+import { InferError } from './systems'
+import { ClientError } from 'graphql-request'
+import { Ora } from 'ora'
 
 export function getGlobalConfigPath() {
   return path.join(homedir(), '.rngo', 'config.yml')
@@ -54,7 +56,6 @@ export async function getRngoOrExit(
   flags?: { config?: string }
 ): Promise<Rngo> {
   const globalConfig = await getGlobalConfig()
-  let rngo: Rngo
 
   if (globalConfig.token) {
     const result = await Rngo.init({
@@ -63,40 +64,25 @@ export async function getRngoOrExit(
     })
 
     if (result.ok) {
-      rngo = result.val
+      return result.val
     } else {
-      result.val.forEach((initError) => {
-        if (initError.code == 'invalidOption' && initError.key === 'apiToken') {
-          errorAndExit(
-            command,
-            'SessionExpected',
-            `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
-              'rngo auth'
-            )}`
-          )
-        } else if (initError.code === 'invalidConfig') {
-          errorAndExit(command, 'RngoInitFailed', 'Unable to initiate rngo')
-        }
-      })
+      printErrorAndExit(command, result.val)
     }
   } else {
-    errorAndExit(
+    printMessageAndExit(
       command,
-      'SessionExpected',
       `To get started, first log into the rngo API by running: ${chalk.yellow.bold(
         'rngo auth'
       )}`
     )
   }
-
-  return rngo!
 }
 
 export async function getConfigOrExit(
   command: Command,
   rngo: Rngo
 ): Promise<LocalConfig> {
-  let errors: CliError[] = []
+  let errors: rngoUtil.GeneralError[] = []
   let config: LocalConfig
   const narrowResult = LocalConfigSchema.safeParse(rngo.configFileSource)
 
@@ -105,6 +91,7 @@ export async function getConfigOrExit(
   } else {
     errors = narrowResult.error.issues.map((zodIssue) => {
       return {
+        code: 'general',
         message: zodIssue.message,
         path: zodIssue.path,
       }
@@ -112,38 +99,84 @@ export async function getConfigOrExit(
   }
 
   if (errors.length > 0) {
-    logUserErrors(command, errors)
-    errorAndExit(command, 'ConfigInvalid', 'Config is invalid')
+    printErrorAndExit(command, errors)
   }
 
   return config!
 }
 
-export function errorAndExit(
-  command: Command,
-  code: ErrorCode,
-  message: string,
-  suggestions?: string[]
-): never {
-  return command.error(message, {
-    code,
-    suggestions,
-    exit: 1,
-    ref: `https://rngo.dev/cliErrors#${code}`,
+export function failSpinners(command: Command, spinners: Record<string, Ora>) {
+  let wasSpinning = false
+
+  Object.values(spinners).forEach((spinner) => {
+    if (spinner.isSpinning) {
+      spinner.fail()
+      wasSpinning = true
+    }
   })
+
+  if (wasSpinning) {
+    command.log()
+  }
 }
 
-export function logUserErrors(command: Command, errors: CliError[]) {
-  command.log()
-  command.log(chalk.red.bold(pluralize('error', errors.length, true)))
-  command.log()
+export function printCaughtError(command: Command, error: unknown): void {
+  if (error instanceof Errors.CLIError) {
+    command.logToStderr(error.message)
+  } else if (error instanceof ClientError) {
+    command.logToStderr(chalk.red('Unexpected error returned from API.'))
+  } else if (error instanceof Error) {
+    command.logToStderr(chalk.red('Unexpected error occurred'))
+  }
 
-  errors.forEach((e) => {
-    if (e.path) {
-      const path = e.path.length > 0 ? arrayToJsonPath(e.path) : 'top-level'
-      command.log(chalk.dim(`[${path}]`))
-    }
-    command.log(e.message)
-    command.log()
+  command.exit()
+}
+
+export function printMessageAndExit(command: Command, message: string): never {
+  command.log(message)
+  process.exit(1)
+}
+
+type PrintableError =
+  | rngoUtil.GeneralError
+  | rngoUtil.InvalidArgError<string>
+  | rngoUtil.MissingArgError<string>
+  | rngoUtil.InvalidConfigError
+  | InferError
+
+export function printErrorAndExit(
+  command: Command,
+  errors: PrintableError[]
+): never {
+  command.log(chalk.red.bold(pluralize('error', errors.length, true)))
+
+  errors.forEach((error) => {
+    command.log(`  ${formatError(error)}`)
   })
+
+  process.exit(1)
+}
+
+function formatError(error: PrintableError): string {
+  let prefix: string | undefined = undefined
+
+  if (error.code === 'invalidArg') {
+    if (error.key === 'apiToken') {
+      return `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
+        'rngo auth'
+      )}`
+    }
+
+    prefix = `'${error.key}' flag`
+  } else if (error.code === 'missingArg') {
+    prefix = `'${error.key}' flag`
+  } else if (error.code === 'invalidConfig') {
+    prefix = `config`
+  }
+
+  if (prefix) {
+    return `${chalk.dim(prefix)}: ${error.message}`
+  } else {
+    return error.message
+  }
 }

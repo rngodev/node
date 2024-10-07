@@ -1,10 +1,14 @@
 import { Command } from '@oclif/core'
 import inquirer from 'inquirer'
 
-import { setTokenInGlobalConfig } from '@cli/util'
+import { printCaughtError, setTokenInGlobalConfig } from '@cli/util'
 
 export default class Logout extends Command {
   static summary = 'End the API session.'
+
+  async catch(error: unknown) {
+    printCaughtError(this, error)
+  }
 
   async run(): Promise<void> {
     const choice = await inquirer.prompt([
