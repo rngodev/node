@@ -1,6 +1,6 @@
 {
   "name": "rngo",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "rngo client and CLI",
   "bin": "./bin/run.js",
   "keywords": [
