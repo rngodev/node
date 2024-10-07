@@ -18,7 +18,6 @@ import {
   InvalidConfigError,
   MissingArgError,
   ValidJwtToken,
-  buildJsonPointer,
   jsonPathParts,
 } from './util'
 
@@ -267,7 +266,7 @@ export class Rngo {
     this.directory = options.directory
     this.apiUrl = options.apiUrl
     this.gqlClient = new GraphQLClient(options.apiUrl.toString(), {
-      jsonSerializer: JSONbig({ useNativeBigInt: true }),
+      jsonSerializer: rngoUtil.JsonSerde,
       headers: {
         authorization: `Bearer ${options.apiToken.token}`,
         'auth-provider': 'clerk',
@@ -310,7 +309,7 @@ export class Rngo {
       `),
       {
         input: {
-          source: JSON.stringify(this.configFileSource),
+          source: rngoUtil.JsonSerde.stringify(this.configFileSource),
           branch: scmRepo?.branch,
         },
       }
@@ -381,7 +380,7 @@ export class Rngo {
       }
 
       throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(publicationResult)}`
+        `Unhandled GraphQL error: ${rngoUtil.JsonSerde.stringify(publicationResult)}`
       )
     } else {
       throw new Error(`Config file processing timed out`)
@@ -406,7 +405,7 @@ export class Rngo {
       {
         input: {
           ...args,
-          configFileSource: JSON.stringify(this.configFileSource),
+          configFileSource: rngoUtil.JsonSerde.stringify(this.configFileSource),
         },
       }
     )
