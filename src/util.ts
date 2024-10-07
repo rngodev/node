@@ -48,8 +48,6 @@ export type InsufficientVolumeError = {
   availableUnits: number
 }
 
-export const JsonSerde = JSONbig({ useNativeBigInt: true })
-
 export type ValidJwtToken = { token: string; expirationDate: Date }
 export type JwtTokenError = 'missing' | 'expired' | 'malformed'
 
