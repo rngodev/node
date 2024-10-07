@@ -58,20 +58,35 @@ export async function getRngoOrExit(
   const globalConfig = await getGlobalConfig()
 
   if (globalConfig.token) {
+    const apiToken = process.env.RNGO_API_TOKEN ? undefined : globalConfig.token
+
     const result = await Rngo.init({
-      apiToken: globalConfig.token,
+      apiToken,
       configFilePath: flags?.config,
     })
 
     if (result.ok) {
       return result.val
     } else {
-      printErrorAndExit(command, result.val)
+      const apiTokenError = result.val.find(
+        (error) => error.code === 'invalidArg' && error.key === 'apiToken'
+      )
+
+      if (apiTokenError) {
+        printMessageAndExit(
+          command,
+          `Your rngo session has expired. Log in again by running: ${chalk.yellow.bold(
+            'rngo auth'
+          )}`
+        )
+      } else {
+        printErrorAndExit(command, result.val)
+      }
     }
   } else {
     printMessageAndExit(
       command,
-      `To get started, first log into the rngo API by running: ${chalk.yellow.bold(
+      `To get started, first log into the rngo by running: ${chalk.yellow.bold(
         'rngo auth'
       )}`
     )
@@ -141,6 +156,7 @@ type PrintableError =
   | rngoUtil.GeneralError
   | rngoUtil.InvalidArgError<string>
   | rngoUtil.MissingArgError<string>
+  | rngoUtil.InvalidEnvVarError<string>
   | rngoUtil.InvalidConfigError
   | InferError
 
@@ -148,35 +164,38 @@ export function printErrorAndExit(
   command: Command,
   errors: PrintableError[]
 ): never {
-  command.log(chalk.red.bold(pluralize('error', errors.length, true)))
-
-  errors.forEach((error) => {
-    command.log(`  ${formatError(error)}`)
+  errors.forEach((error, index) => {
+    command.logToStderr(`${formatError(error)}`)
+    if (index < errors.length - 1) {
+      command.logToStderr()
+    }
   })
 
   process.exit(1)
 }
 
 function formatError(error: PrintableError): string {
-  let prefix: string | undefined = undefined
+  let prefix: string = 'Error'
 
-  if (error.code === 'invalidArg') {
-    if (error.key === 'apiToken') {
-      return `Your rngo API session has expired, please login again by running: ${chalk.yellow.bold(
-        'rngo auth'
-      )}`
-    }
-
-    prefix = `'${error.key}' flag`
-  } else if (error.code === 'missingArg') {
-    prefix = `'${error.key}' flag`
+  if (error.code === 'invalidArg' || error.code === 'missingArg') {
+    prefix = `'${error.key}' flag invalid`
+  } else if (error.code === 'invalidEnvVar') {
+    prefix = `Environment variable '${error.envVar}' invalid`
   } else if (error.code === 'invalidConfig') {
-    prefix = `config`
+    prefix = `Config file invalid at ${rngoUtil.jsonPathFromParts(error.path)}`
   }
 
-  if (prefix) {
-    return `${chalk.dim(prefix)}: ${error.message}`
-  } else {
-    return error.message
+  let message = `${chalk.bold(prefix)}\n${error.message}`
+
+  let details: string | undefined = undefined
+
+  if (error.code === 'general') {
+    details = error.details
   }
+
+  if (details) {
+    message += `\n${chalk.dim(details)}`
+  }
+
+  return message
 }

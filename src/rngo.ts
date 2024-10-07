@@ -1,5 +1,4 @@
 import { GraphQLClient } from 'graphql-request'
-import JSONbig from 'json-bigint'
 import { execFile } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -10,12 +9,13 @@ import { z } from 'zod'
 
 import * as rngoUtil from './util'
 import { gql } from './gql/gql'
-import { PreviewVolumeIssue, DeviceType } from './gql/graphql'
+import { DeviceType } from './gql/graphql'
 import {
   GeneralError,
   InsufficientVolumeError,
   InvalidArgError,
   InvalidConfigError,
+  InvalidEnvVarError,
   MissingArgError,
   ValidJwtToken,
   jsonPathParts,
@@ -64,11 +64,12 @@ export type DeviceAuth = {
 export type InitError =
   | InvalidArgError<keyof RngoOptions>
   | MissingArgError<keyof RngoOptions>
+  | InvalidEnvVarError<'RNGO_API_TOKEN' | 'RNGO_API_URL'>
   | InvalidConfigError
 
 export type CompileSimulationError =
   | InvalidConfigError
-  | InvalidArgError<'branch' | 'scenario'>
+  | InvalidArgError<'branch' | 'scenario' | 'seed' | 'start' | 'end'>
   | GeneralError
 
 export type RunSimulationError = InsufficientVolumeError | GeneralError
@@ -166,12 +167,19 @@ export class Rngo {
       if (result.ok) {
         apiToken = result.val
       } else {
-        const key = options.apiUrl ? 'apiToken' : 'RNGO_API_TOKEN'
-        errors.push({
-          code: 'invalidArg',
-          key: 'apiToken',
-          message: `${key} is ${result.val}`,
-        })
+        if (options.apiToken) {
+          errors.push({
+            code: 'invalidArg',
+            key: 'apiToken',
+            message: `apiToken is ${result.val}`,
+          })
+        } else {
+          errors.push({
+            code: 'invalidEnvVar',
+            envVar: 'RNGO_API_TOKEN',
+            message: `RNGO_API_TOKEN is ${result.val}`,
+          })
+        }
       }
     } else {
       errors.push({
@@ -355,7 +363,7 @@ export class Rngo {
           key: publicationResult.key,
           branch: publicationResult.branch?.name,
         })
-      } else if (publicationResult.__typename == 'Failure') {
+      } else {
         const configFileErrors = publicationResult.issues.map((issue) => {
           const path = issue.path ? jsonPathParts(issue.path) : undefined
 
@@ -363,7 +371,7 @@ export class Rngo {
             return {
               code: 'invalidConfig' as const,
               message: issue.message,
-              path,
+              path: path.slice(1),
             }
           }
 
@@ -374,14 +382,8 @@ export class Rngo {
           }
         })
 
-        if (configFileErrors) {
-          return Err(configFileErrors)
-        }
+        return Err(configFileErrors)
       }
-
-      throw new Error(
-        `Unhandled GraphQL error: ${rngoUtil.JsonSerde.stringify(publicationResult)}`
-      )
     } else {
       throw new Error(`Config file processing timed out`)
     }
@@ -479,23 +481,23 @@ export class Rngo {
           const path = issue.path ? jsonPathParts(issue.path) : undefined
 
           if (path) {
-            if (path[0] === 'scenario') {
+            const argPathPartResult = z
+              .enum(['scenario', 'branch', 'seed', 'start', 'end'])
+              .safeParse(path[0])
+
+            if (argPathPartResult.success) {
               return {
                 code: 'invalidArg' as const,
-                key: 'scenario' as const,
+                key: argPathPartResult.data,
                 message: issue.message,
               }
-            } else if (path[0] === 'branch') {
-              return {
-                code: 'invalidArg' as const,
-                key: 'branch' as const,
-                message: issue.message,
-              }
-            } else if (path[0] === 'configFileSource') {
-              return {
-                code: 'invalidConfig' as const,
-                path: path,
-                message: issue.message,
+            } else {
+              if (path[0] === 'configFileSource') {
+                return {
+                  code: 'invalidConfig' as const,
+                  path: path.slice(1),
+                  message: issue.message,
+                }
               }
             }
           }
@@ -662,11 +664,25 @@ export class Rngo {
     return simulationDir
   }
 
-  async importSimulation(simulationId: string) {
+  async importSimulation(
+    simulationId: string
+  ): Promise<Result<string, GeneralError[]>> {
     const directory = this.simulationDir(simulationId)
 
-    return nodeUtil.promisify(execFile)('./import.sh', {
-      cwd: directory,
-    })
+    try {
+      const out = await nodeUtil.promisify(execFile)('./import.sh', {
+        cwd: directory,
+      })
+
+      return Ok(out.stdout)
+    } catch (error) {
+      return Err([
+        {
+          code: 'general' as const,
+          message: `Simulation import script failed`,
+          details: error instanceof Error ? error.message : undefined,
+        },
+      ])
+    }
   }
 }

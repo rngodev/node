@@ -146,8 +146,14 @@ To proceed, go to ${chalk.yellow.bold(
 
     if (sink.importScriptUrl) {
       this.spinners.import.start()
-      await rngo.importSimulation(simulationId)
-      this.spinners.import.succeed()
+      const result = await rngo.importSimulation(simulationId)
+
+      if (result.ok) {
+        this.spinners.import.succeed()
+      } else {
+        failSpinners(this, this.spinners)
+        printErrorAndExit(this, result.val)
+      }
     }
   }
 }
