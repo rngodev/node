@@ -7,6 +7,7 @@ import simpleGit, { SimpleGit } from 'simple-git'
 import TsResult, { Result } from 'ts-results'
 import yauzl from 'yauzl'
 import * as jp from 'jsonpath'
+import JSONbig from 'json-bigint'
 
 const { Err, Ok } = TsResult
 
@@ -39,6 +40,8 @@ export type InsufficientVolumeError = {
   requiredUnits: number
   availableUnits: number
 }
+
+export const JsonSerde = JSONbig({ useNativeBigInt: true })
 
 export type ValidJwtToken = { token: string; expirationDate: Date }
 export type JwtTokenError = 'missing' | 'expired' | 'malformed'

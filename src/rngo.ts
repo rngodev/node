@@ -18,7 +18,6 @@ import {
   InvalidConfigError,
   MissingArgError,
   ValidJwtToken,
-  buildJsonPointer,
   jsonPathParts,
 } from './util'
 
@@ -50,6 +49,7 @@ export type FileSink = {
   id: string
   simulationId: string
   importScriptUrl?: string
+  metadataUrl?: string
   archives: {
     url: string
   }[]
@@ -266,7 +266,7 @@ export class Rngo {
     this.directory = options.directory
     this.apiUrl = options.apiUrl
     this.gqlClient = new GraphQLClient(options.apiUrl.toString(), {
-      jsonSerializer: JSONbig({ useNativeBigInt: true }),
+      jsonSerializer: rngoUtil.JsonSerde,
       headers: {
         authorization: `Bearer ${options.apiToken.token}`,
         'auth-provider': 'clerk',
@@ -309,7 +309,7 @@ export class Rngo {
       `),
       {
         input: {
-          source: JSON.stringify(this.configFileSource),
+          source: rngoUtil.JsonSerde.stringify(this.configFileSource),
           branch: scmRepo?.branch,
         },
       }
@@ -380,7 +380,7 @@ export class Rngo {
       }
 
       throw new Error(
-        `Unhandled GraphQL error: ${JSON.stringify(publicationResult)}`
+        `Unhandled GraphQL error: ${rngoUtil.JsonSerde.stringify(publicationResult)}`
       )
     } else {
       throw new Error(`Config file processing timed out`)
@@ -405,7 +405,7 @@ export class Rngo {
       {
         input: {
           ...args,
-          configFileSource: JSON.stringify(this.configFileSource),
+          configFileSource: rngoUtil.JsonSerde.stringify(this.configFileSource),
         },
       }
     )
@@ -560,6 +560,7 @@ export class Rngo {
                   ... on FileSink {
                     id
                     importScriptUrl
+                    metadataUrl
                     archives {
                       url
                     }
@@ -589,6 +590,7 @@ export class Rngo {
           id: runSimulationToFile.id,
           simulationId: simulationId,
           importScriptUrl: completedSink.importScriptUrl || undefined,
+          metadataUrl: completedSink.metadataUrl || undefined,
           archives: completedSink.archives,
         })
       } else {
@@ -641,6 +643,10 @@ export class Rngo {
         simulationDir
       )
       await fs.chmod(scriptPath, 0o755)
+    }
+
+    if (fileSink.metadataUrl) {
+      await rngoUtil.downloadUrl(fileSink.metadataUrl, simulationDir)
     }
 
     if (await rngoUtil.symlinkExists(this.lastSimulationDir)) {
