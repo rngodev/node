@@ -11,6 +11,8 @@ CREATE TABLE a (
     bool boolean,
     ts timestamp,
     tstz timestamptz,
+    json json,
+    jsonb jsonb,
     enm role
 );
 
