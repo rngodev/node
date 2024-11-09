@@ -197,9 +197,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
     case PostgresDataType.VARCHAR:
       return {
         type: 'string',
-        maxLength: column.character_maximum_length
-          ? BigInt(column.character_maximum_length)
-          : undefined,
+        maxLength: column.character_maximum_length,
       }
 
     case PostgresDataType.JSON:
