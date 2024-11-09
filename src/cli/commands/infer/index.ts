@@ -1,4 +1,4 @@
-import { Command } from '@oclif/core'
+import { Command, Flags } from '@oclif/core'
 import chalk from 'chalk'
 import ora, { Ora } from 'ora'
 
@@ -19,6 +19,13 @@ import {
 export default class Infer extends Command {
   static summary = 'Infer configuration.'
 
+  static flags = {
+    force: Flags.boolean({
+      char: 'f',
+      summary: 'Overwrite existing configuration.',
+    }),
+  }
+
   async catch(error: unknown) {
     failSpinners(this, this.spinners)
     printCaughtError(this, error)
@@ -27,6 +34,7 @@ export default class Infer extends Command {
   spinners: Record<string, Ora> = {}
 
   public async run(): Promise<void> {
+    const cmd = await this.parse(Infer)
     const rngo = await getRngoOrExit(this)
     const config = await getConfigOrExit(this, rngo)
 
@@ -62,7 +70,11 @@ export default class Infer extends Command {
       this.spinners.calculating = ora('Calculating config updates')
 
       const spinner = this.spinners.calculating.start()
-      const commands = getConfigUpdateCommandsForMerge(config, systems)
+      const commands = getConfigUpdateCommandsForMerge(
+        config,
+        systems,
+        cmd.flags.force
+      )
       spinner.succeed()
 
       if (commands.length > 0) {

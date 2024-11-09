@@ -134,7 +134,8 @@ export type ConfigUpdateCommand =
 
 export function getConfigUpdateCommandsForMerge(
   baseConfig: LocalConfig,
-  newConfigs: Record<string, LocalConfig>
+  newConfigs: Record<string, LocalConfig>,
+  force: boolean = false
 ): ConfigUpdateCommand[] {
   let commands: ConfigUpdateCommand[] = []
 
@@ -143,7 +144,7 @@ export function getConfigUpdateCommandsForMerge(
       ([streamName, newStream]) => {
         let existingStream = (baseConfig.streams || {})[streamName]
 
-        if (existingStream) {
+        if (existingStream && !force) {
           if (existingStream.schema.properties) {
             if (newStream.schema.properties) {
               const existingProperties = existingStream.schema.properties
