@@ -36,7 +36,7 @@ export default class Init extends Command {
     } else {
       changedFiles.push(configFilePath)
       this.spinners.init.succeed()
-      await rngoUtil.writeFile(configFilePath, InitialConfig)
+      await rngoUtil.writeFile(configFilePath, initialConfig())
     }
 
     const git = await rngoUtil.maybeGit()
@@ -80,20 +80,26 @@ export default class Init extends Command {
   }
 }
 
-const InitialConfig = `# A system enables seamless data import and stream inference.
-#
-# For more information, see: https://rngo.dev/docs/reference/systems.
+function initialConfig() {
+  return `
+# A config file must have a unique namespace.
+# See: https://rngo.dev/docs/reference/config#namespace
+namespace: ${path.basename(process.cwd())}
+
+# A system enables seamless data import and stream inference.
+# See: https://rngo.dev/docs/reference/systems.
 systems:
-# Defines a system named "db" for a Postgres database:
-#   db:
-#     type: postgres
+
+# Example: a system named "db" for a PostgreSQL database
+#  db:
+#    type: postgres
 
 # A stream defines a schema for a data source. They generally map to tables
-# in relational DBs. Whenever possible, they should be inferred from a system.
-#
-# For more information, see: https://rngo.dev/docs/reference/streams
+#   in relational DBs. Whenever possible, they should be inferred from a system.
+# See: https://rngo.dev/docs/reference/streams
 streams:
-# Defines a stream named "users":
+
+# Example: a stream named "users"
 #  users:
 #    systems:
 #      db:
@@ -106,6 +112,7 @@ streams:
 #        full_name:
 #          type: string
 `
+}
 
 const GitIngoreLines = `.rngo/*
 !.rngo/config.yml
