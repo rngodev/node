@@ -113,6 +113,14 @@ describe('inferConfigFromSystem', () => {
       expect(aTstzProp?.type).toBe('string')
       expect(aTstzProp?.format).toBe('date-time')
 
+      const aJsonProp = aSchema.properties?.json
+      expect(aJsonProp?.type).toBe('object')
+      expect(aJsonProp?.properties).toStrictEqual({})
+
+      const aJsonbProp = aSchema.properties?.jsonb
+      expect(aJsonbProp?.type).toBe('object')
+      expect(aJsonbProp?.properties).toStrictEqual({})
+
       const aEnmProp = aSchema.properties?.enm
       expect(aEnmProp?.type).toBe('string')
       expect(aEnmProp?.enum).toStrictEqual(['a', 'b'])

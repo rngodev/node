@@ -85,6 +85,16 @@ export const TypeMaps: {
     dataTypes: ['character varying'],
     udtNames: ['varchar'],
   },
+  {
+    postgresType: PostgresDataType.JSON,
+    dataTypes: ['json'],
+    udtNames: ['json'],
+  },
+  {
+    postgresType: PostgresDataType.JSONB,
+    dataTypes: ['jsonb'],
+    udtNames: ['jsonb'],
+  },
 ]
 
 export function parsePostgresDataType(

@@ -200,6 +200,13 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
         maxLength: column.character_maximum_length,
       }
 
+    case PostgresDataType.JSON:
+    case PostgresDataType.JSONB:
+      return {
+        type: 'object',
+        properties: {},
+      }
+
     default:
       return {
         type: 'string',
