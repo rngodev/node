@@ -106,6 +106,14 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
     ref = { table: column.referenced_table, column: column.referenced_column }
   }
 
+  const rngo = ref
+    ? {
+        rngo: {
+          value: `streams.${ref.table.replace(/"/g, '')}.random.${ref.column}`,
+        },
+      }
+    : {}
+
   let udtBasedType: SchemaType = 'string'
 
   if (column.udt_type === PostgresDataType.INTEGER) {
@@ -138,11 +146,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
                 minimum: BigInt(-9223372036854775808n),
                 maximum: BigInt(9223372036854775807n),
               }
-            : {
-                rngo: {
-                  value: `streams.${ref.table}.random.${ref.column}`,
-                },
-              }),
+            : rngo),
         }
       }
 
@@ -156,11 +160,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
         type: 'integer',
         ...(ref === null
           ? { minimum: BigInt(-2147483648), maximum: BigInt(2147483647) }
-          : {
-              rngo: {
-                value: `streams.${ref.table}.random.${ref.column}`,
-              },
-            }),
+          : rngo),
       }
 
     case PostgresDataType.SMALLINT:
@@ -168,16 +168,13 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
         type: 'integer',
         ...(ref === null
           ? { minimum: BigInt(-32768), maximum: BigInt(32767) }
-          : {
-              rngo: {
-                value: `streams.${ref.table}.random.${ref.column}`,
-              },
-            }),
+          : rngo),
       }
 
     case PostgresDataType.TEXT:
       return {
         type: 'string',
+        ...rngo,
       }
 
     case PostgresDataType.TIMESTAMP:
@@ -191,13 +188,17 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
       return {
         type: udtBasedType,
         enum: column.enum_values?.reverse(),
+        ...rngo,
       }
 
     case PostgresDataType.CHAR:
     case PostgresDataType.VARCHAR:
       return {
         type: 'string',
-        maxLength: column.character_maximum_length,
+        maxLength: column.character_maximum_length
+          ? BigInt(column.character_maximum_length)
+          : undefined,
+        ...rngo,
       }
 
     case PostgresDataType.JSON:
@@ -210,6 +211,7 @@ function columnToJsonSchema(table: string, column: ColumnInfo): Schema {
     default:
       return {
         type: 'string',
+        ...rngo,
       }
   }
 }

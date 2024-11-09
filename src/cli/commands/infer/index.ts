@@ -74,6 +74,12 @@ export default class Infer extends Command {
                 command.path.join('/')
               )} to stream ${chalk.yellow.bold(command.streamName)}`
             )
+          } else if (command.type === 'updateObjectProperty') {
+            this.log(
+              ` - updating property ${chalk.yellow.bold(
+                command.path.join('/')
+              )} on stream ${chalk.yellow.bold(command.streamName)}`
+            )
           } else if (command.type === 'addStream') {
             this.log(
               ` - adding stream ${chalk.yellow.bold(command.streamName)}`
