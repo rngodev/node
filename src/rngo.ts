@@ -666,7 +666,7 @@ export class Rngo {
 
   async importSimulation(
     simulationId: string
-  ): Promise<Result<string, GeneralError[]>> {
+  ): Promise<Result<{ stdout: string; stderr: string }, GeneralError[]>> {
     const directory = this.simulationDir(simulationId)
 
     try {
@@ -674,7 +674,7 @@ export class Rngo {
         cwd: directory,
       })
 
-      return Ok(out.stdout)
+      return Ok(out)
     } catch (error) {
       return Err([
         {
