@@ -8,6 +8,7 @@ import {
   getRngoOrExit,
   printCaughtError,
   printErrorAndExit,
+  printMessageAndExit,
 } from '@cli/util'
 
 export default class Run extends Command {
@@ -149,7 +150,14 @@ To proceed, go to ${chalk.yellow.bold(
       const result = await rngo.importSimulation(simulationId)
 
       if (result.ok) {
-        this.spinners.import.succeed()
+        const errors = result.val.stderr
+
+        if (errors.length > 0) {
+          failSpinners(this, this.spinners)
+          printMessageAndExit(this, `${chalk.bold('Import error')}\n${errors}`)
+        } else {
+          this.spinners.import.succeed()
+        }
       } else {
         failSpinners(this, this.spinners)
         printErrorAndExit(this, result.val)
