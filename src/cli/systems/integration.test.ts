@@ -96,11 +96,11 @@ describe('inferConfigFromSystem', () => {
 
       const aChrProp = aSchema.properties?.chr
       expect(aChrProp?.type).toBe('string')
-      expect(aChrProp?.maxLength).toBe(512)
+      expect(aChrProp?.maxLength).toBe(512n)
 
       const aVchrProp = aSchema.properties?.vchr
       expect(aVchrProp?.type).toBe('string')
-      expect(aVchrProp?.maxLength).toBe(255)
+      expect(aVchrProp?.maxLength).toBe(255n)
 
       const aBoolProp = aSchema.properties?.bool
       expect(aBoolProp?.type).toBe('boolean')

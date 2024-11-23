@@ -2,6 +2,7 @@ import { parseDocument } from 'yaml'
 import { z } from 'zod'
 
 import * as rngoUtil from '@util'
+import deepEqual from 'deep-equal'
 
 const RngoProbabilitySchema = z.object({
   type: z.record(z.number().int()),
@@ -27,8 +28,8 @@ const BaseSchema = z.object({
   type: SchemaTypeSchema.or(z.array(SchemaTypeSchema)),
   enum: z.array(z.string()).optional(),
   rngo: RngoSchema.optional(),
-  minLength: z.number().optional(),
-  maxLength: z.number().optional(),
+  minLength: z.bigint().optional(),
+  maxLength: z.bigint().optional(),
   format: z.string().optional(),
   minimum: z.bigint().optional(),
   maximum: z.bigint().optional(),
@@ -113,6 +114,13 @@ export type ConfigUpdateCommand =
       property: Schema
     }
   | {
+      type: 'updateObjectProperty'
+      streamName: string
+      path: (string | number)[]
+      oldProperty: Schema
+      newProperty: Schema
+    }
+  | {
       type: 'addStream'
       streamName: string
       stream: Stream
@@ -126,43 +134,65 @@ export type ConfigUpdateCommand =
 
 export function getConfigUpdateCommandsForMerge(
   baseConfig: LocalConfig,
-  newConfigs: Record<string, LocalConfig>
+  newConfigs: Record<string, LocalConfig>,
+  force: boolean = false
 ): ConfigUpdateCommand[] {
   let commands: ConfigUpdateCommand[] = []
 
   Object.entries(newConfigs).forEach(([key, newConfig]) => {
-    Object.entries(newConfig.streams || {}).forEach(([streamName, stream]) => {
-      let existingStream = (baseConfig.streams || {})[streamName]
+    Object.entries(newConfig.streams || {}).forEach(
+      ([streamName, newStream]) => {
+        let existingStream = (baseConfig.streams || {})[streamName]
 
-      if (existingStream) {
-        if (existingStream.schema.properties) {
-          if (stream.schema.properties) {
-            const existingProperties = existingStream.schema.properties
-            Object.entries(stream.schema.properties).forEach(
-              ([propertyName, property]) => {
-                if (!(propertyName in existingProperties)) {
-                  commands.push({
-                    type: 'addObjectProperty',
-                    streamName,
-                    path: [propertyName],
-                    property,
-                  })
+        if (existingStream && !force) {
+          if (existingStream.schema.properties) {
+            if (newStream.schema.properties) {
+              const existingProperties = existingStream.schema.properties
+              Object.entries(newStream.schema.properties).forEach(
+                ([propertyName, newProperty]) => {
+                  const existingProperty = existingProperties[propertyName]
+
+                  if (existingProperty) {
+                    const mergedProperty = {
+                      ...newProperty,
+                      ...existingProperty,
+                    }
+
+                    console.log(mergedProperty)
+
+                    if (!deepEqual(existingProperty, mergedProperty)) {
+                      commands.push({
+                        type: 'updateObjectProperty',
+                        streamName,
+                        path: [propertyName],
+                        oldProperty: existingProperty,
+                        newProperty: mergedProperty,
+                      })
+                    }
+                  } else {
+                    commands.push({
+                      type: 'addObjectProperty',
+                      streamName,
+                      path: [propertyName],
+                      property: newProperty,
+                    })
+                  }
                 }
-              }
-            )
-          } else {
-            commands.push({
-              type: 'replaceStreamSchema',
-              streamName,
-              oldSchema: existingStream.schema,
-              newSchema: stream.schema,
-            })
+              )
+            } else {
+              commands.push({
+                type: 'replaceStreamSchema',
+                streamName,
+                oldSchema: existingStream.schema,
+                newSchema: newStream.schema,
+              })
+            }
           }
+        } else {
+          commands.push({ type: 'addStream', streamName, stream: newStream })
         }
-      } else {
-        commands.push({ type: 'addStream', streamName, stream })
       }
-    })
+    )
   })
 
   return commands
@@ -184,6 +214,15 @@ export function applyConfigUpdateCommands(
         ...command.path,
       ]
       doc.setIn(path, command.property)
+    } else if (command.type === 'updateObjectProperty') {
+      const path = [
+        'streams',
+        command.streamName,
+        'schema',
+        'properties',
+        ...command.path,
+      ]
+      doc.setIn(path, command.newProperty)
     } else if (command.type === 'addStream') {
       if (!doc.has('streams') || !doc.get('streams')) {
         doc.set('streams', doc.createNode({}))
